@@ -12,14 +12,15 @@ const footerLinks = [
   {
     title: "Resources",
     links: [
-      { label: "Documentation", href: "/docs" },
-      { label: "Support", href: "mailto:support@queryline.app" },
+      { label: "Github", href: "https://github.com/tier3guy/Queryline" },
+      { label: "Support", href: "mailto:avinashgupta.works@gmail.com" },
+      { label: "Creator", href: "https://tier3guy.com" }
     ],
   },
   {
     title: "Account",
     links: [
-      { label: "Log in", href: "/sign-in" },
+      // { label: "Log in", href: "/sign-in" },
       { label: "Get started", href: "/workspace" },
     ],
   },

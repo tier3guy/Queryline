@@ -3,7 +3,7 @@ import Link from "next/link";
 const navigation = [
   { label: "Features", href: "#features" },
   { label: "How it works", href: "#workflow" },
-  { label: "Documentation", href: "/docs" },
+  { label: "Github", href: "https://github.com/tier3guy/Queryline" },
 ];
 
 export default function Header() {
@@ -33,12 +33,12 @@ export default function Header() {
         </nav>
 
         <div className="flex items-center gap-5">
-          <Link
+          {/* <Link
             href="/sign-in"
             className="hidden text-[13px] font-medium text-neutral-600 transition-colors hover:text-black sm:block"
           >
             Log in
-          </Link>
+          </Link> */}
 
           <Link
             href="/workspace"
