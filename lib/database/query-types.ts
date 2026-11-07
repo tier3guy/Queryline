@@ -4,7 +4,7 @@ export interface DatabaseTable {
   name: string;
   schema?: string;
   type: "table" | "view" | "collection";
-};;
+};
 
 export interface DatabaseColumn {
   name: string;

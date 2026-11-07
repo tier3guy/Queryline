@@ -1,10 +1,9 @@
-
 "use client";
 
 import { useState } from "react";
 
 interface ComposerProps {
-  onSend: (message: string) => void;
+  onSend: (message: string) => void | Promise<void>;
   disabled?: boolean;
 };
 
@@ -21,7 +20,7 @@ export default function Composer({
       return;
     }
 
-    onSend(trimmedMessage);
+    void onSend(trimmedMessage);
     setMessage("");
   };
 
@@ -45,7 +44,9 @@ export default function Composer({
 
         <div className="flex items-center justify-between px-3 pb-3">
           <p className="text-[11px] text-muted-foreground">
-            Enter to send · Shift + Enter for a new line
+            {disabled
+              ? "Queryline is thinking..."
+              : "Enter to send · Shift + Enter for a new line"}
           </p>
 
           <button

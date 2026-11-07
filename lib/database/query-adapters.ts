@@ -4,9 +4,21 @@ import mysql from "mysql2/promise";
 import Database from "better-sqlite3";
 import { MongoClient } from "mongodb";
 import { validateReadOnlySQL } from "@/lib/database/query-validator";
-import { MAX_QUERY_ROWS, QUERY_TIMEOUT_MS } from "@/lib/database/query-constants";
-import type { DatabaseConnectionConfig, DatabaseType } from "@/lib/database/types";
-import type { DatabaseColumn, DatabaseQueryAdapter, DatabaseSchema, DatabaseTable, QueryExecutionResult } from "@/lib/database/query-types";
+import {
+  MAX_QUERY_ROWS,
+  QUERY_TIMEOUT_MS,
+} from "@/lib/database/query-constants";
+import type {
+  DatabaseConnectionConfig,
+  DatabaseType,
+} from "@/lib/database/types";
+import type {
+  DatabaseColumn,
+  DatabaseQueryAdapter,
+  DatabaseSchema,
+  DatabaseTable,
+  QueryExecutionResult,
+} from "@/lib/database/query-types";
 
 function createSchema(
   databaseType: DatabaseType,
@@ -19,7 +31,7 @@ function createSchema(
     columns,
     relationships: [],
   };
-};
+}
 
 function toRows(value: unknown): Record<string, unknown>[] {
   if (!Array.isArray(value)) {
@@ -27,7 +39,7 @@ function toRows(value: unknown): Record<string, unknown>[] {
   }
 
   return value as Record<string, unknown>[];
-};
+}
 
 function createExecutionResult(
   rows: Record<string, unknown>[],
@@ -39,30 +51,36 @@ function createExecutionResult(
     rowCount: Math.min(rows.length, MAX_QUERY_ROWS),
     executionTime: Date.now() - startedAt,
   };
-};
+}
 
 function addSQLLimit(query: string, type: DatabaseType): string {
   const normalizedQuery = validateReadOnlySQL(query);
 
-  if (/\blimit\s+\d+\b|\bfetch\s+first\s+\d+\b|\btop\s*\(/i.test(normalizedQuery)) {
+  if (
+    /\blimit\s+\d+\b|\bfetch\s+first\s+\d+\b|\btop\s*\(/i.test(normalizedQuery)
+  ) {
     return normalizedQuery;
   }
 
   if (type === "sqlserver") {
-    return normalizedQuery.replace(
-      /^(select|with)\b/i,
-      (match) => match.toLowerCase() === "select" ? "SELECT TOP (100)" : match,
+    return normalizedQuery.replace(/^(select|with)\b/i, (match) =>
+      match.toLowerCase() === "select" ? "SELECT TOP (100)" : match,
     );
   }
 
   return `${normalizedQuery} LIMIT ${MAX_QUERY_ROWS}`;
-};
+}
 
 class PostgreSQLQueryAdapter implements DatabaseQueryAdapter {
   readonly type = "postgresql" as const;
-  private readonly config: Extract<DatabaseConnectionConfig, { type: "postgresql" }>;
+  private readonly config: Extract<
+    DatabaseConnectionConfig,
+    { type: "postgresql" }
+  >;
 
-  constructor(config: Extract<DatabaseConnectionConfig, { type: "postgresql" }>) {
+  constructor(
+    config: Extract<DatabaseConnectionConfig, { type: "postgresql" }>,
+  ) {
     this.config = config;
   }
 
@@ -79,7 +97,7 @@ class PostgreSQLQueryAdapter implements DatabaseQueryAdapter {
       statement_timeout: QUERY_TIMEOUT_MS,
       application_name: "Queryline",
     });
-  };
+  }
 
   async getSchema(): Promise<DatabaseSchema> {
     const client = this.createClient();
@@ -112,6 +130,7 @@ class PostgreSQLQueryAdapter implements DatabaseQueryAdapter {
           JOIN information_schema.key_column_usage kcu
             ON tc.constraint_name = kcu.constraint_name
             AND tc.table_schema = kcu.table_schema
+            AND tc.table_name = kcu.table_name
           WHERE tc.constraint_type = 'PRIMARY KEY'
         ) pk
           ON pk.table_schema = c.table_schema
@@ -145,7 +164,7 @@ class PostgreSQLQueryAdapter implements DatabaseQueryAdapter {
     } finally {
       await client.end().catch(() => undefined);
     }
-  };
+  }
 
   async executeReadQuery(query: string): Promise<QueryExecutionResult> {
     const startedAt = Date.now();
@@ -160,8 +179,8 @@ class PostgreSQLQueryAdapter implements DatabaseQueryAdapter {
     } finally {
       await client.end().catch(() => undefined);
     }
-  };
-};
+  }
+}
 
 class MySQLQueryAdapter implements DatabaseQueryAdapter {
   readonly type = "mysql" as const;
@@ -169,7 +188,7 @@ class MySQLQueryAdapter implements DatabaseQueryAdapter {
 
   constructor(config: Extract<DatabaseConnectionConfig, { type: "mysql" }>) {
     this.config = config;
-  };
+  }
 
   private createConnection() {
     return mysql.createConnection({
@@ -182,7 +201,7 @@ class MySQLQueryAdapter implements DatabaseQueryAdapter {
       connectTimeout: QUERY_TIMEOUT_MS,
       multipleStatements: false,
     });
-  };
+  }
 
   async getSchema(): Promise<DatabaseSchema> {
     const connection = await this.createConnection();
@@ -230,7 +249,7 @@ class MySQLQueryAdapter implements DatabaseQueryAdapter {
     } finally {
       await connection.end();
     }
-  };
+  }
 
   async executeReadQuery(query: string): Promise<QueryExecutionResult> {
     const startedAt = Date.now();
@@ -246,16 +265,19 @@ class MySQLQueryAdapter implements DatabaseQueryAdapter {
     } finally {
       await connection.end();
     }
-  };
-};
+  }
+}
 
 class MariaDBQueryAdapter implements DatabaseQueryAdapter {
   readonly type = "mariadb" as const;
-  private readonly config: Extract<DatabaseConnectionConfig, { type: "mariadb" }>;
+  private readonly config: Extract<
+    DatabaseConnectionConfig,
+    { type: "mariadb" }
+  >;
 
   constructor(config: Extract<DatabaseConnectionConfig, { type: "mariadb" }>) {
     this.config = config;
-  };
+  }
 
   private createConnection() {
     return mysql.createConnection({
@@ -268,7 +290,7 @@ class MariaDBQueryAdapter implements DatabaseQueryAdapter {
       connectTimeout: QUERY_TIMEOUT_MS,
       multipleStatements: false,
     });
-  };
+  }
 
   async getSchema(): Promise<DatabaseSchema> {
     const connection = await this.createConnection();
@@ -316,7 +338,7 @@ class MariaDBQueryAdapter implements DatabaseQueryAdapter {
     } finally {
       await connection.end();
     }
-  };
+  }
 
   async executeReadQuery(query: string): Promise<QueryExecutionResult> {
     const startedAt = Date.now();
@@ -332,16 +354,21 @@ class MariaDBQueryAdapter implements DatabaseQueryAdapter {
     } finally {
       await connection.end();
     }
-  };
-};
+  }
+}
 
 class SQLServerQueryAdapter implements DatabaseQueryAdapter {
   readonly type = "sqlserver" as const;
-  private readonly config: Extract<DatabaseConnectionConfig, { type: "sqlserver" }>;
+  private readonly config: Extract<
+    DatabaseConnectionConfig,
+    { type: "sqlserver" }
+  >;
 
-  constructor(config: Extract<DatabaseConnectionConfig, { type: "sqlserver" }>) {
+  constructor(
+    config: Extract<DatabaseConnectionConfig, { type: "sqlserver" }>,
+  ) {
     this.config = config;
-  };
+  }
 
   private createConfig(): mssql.config {
     return {
@@ -357,7 +384,7 @@ class SQLServerQueryAdapter implements DatabaseQueryAdapter {
         trustServerCertificate: !this.config.ssl,
       },
     };
-  };
+  }
 
   async getSchema(): Promise<DatabaseSchema> {
     const pool = await mssql.connect(this.createConfig());
@@ -419,7 +446,7 @@ class SQLServerQueryAdapter implements DatabaseQueryAdapter {
     } finally {
       await pool.close();
     }
-  };
+  }
 
   async executeReadQuery(query: string): Promise<QueryExecutionResult> {
     const startedAt = Date.now();
@@ -433,31 +460,38 @@ class SQLServerQueryAdapter implements DatabaseQueryAdapter {
     } finally {
       await pool.close();
     }
-  };
-};
+  }
+}
 
 class SQLiteQueryAdapter implements DatabaseQueryAdapter {
   readonly type = "sqlite" as const;
-  private readonly config: Extract<DatabaseConnectionConfig, { type: "sqlite" }>;
+  private readonly config: Extract<
+    DatabaseConnectionConfig,
+    { type: "sqlite" }
+  >;
 
   constructor(config: Extract<DatabaseConnectionConfig, { type: "sqlite" }>) {
     this.config = config;
-  };
+  }
 
   async getSchema(): Promise<DatabaseSchema> {
-    const database = new Database(this.config.filePath, {
+    const database = new Database(this.config.database, {
       readonly: true,
       fileMustExist: true,
     });
 
     try {
-      const tableRows = database.prepare(`
+      const tableRows = database
+        .prepare(
+          `
         SELECT name, type
         FROM sqlite_master
         WHERE type IN ('table', 'view')
           AND name NOT LIKE 'sqlite_%'
         ORDER BY name;
-      `).all() as { name: string; type: string }[];
+      `,
+        )
+        .all() as { name: string; type: string }[];
 
       const tables: DatabaseTable[] = tableRows.map((row) => ({
         name: row.name,
@@ -468,9 +502,9 @@ class SQLiteQueryAdapter implements DatabaseQueryAdapter {
 
       for (const table of tables) {
         const escapedName = table.name.replace(/"/g, '""');
-        const columnRows = database.prepare(
-          `PRAGMA table_info("${escapedName}")`,
-        ).all() as {
+        const columnRows = database
+          .prepare(`PRAGMA table_info("${escapedName}")`)
+          .all() as {
           name: string;
           type: string;
           notnull: number;
@@ -489,11 +523,11 @@ class SQLiteQueryAdapter implements DatabaseQueryAdapter {
     } finally {
       database.close();
     }
-  };
+  }
 
   async executeReadQuery(query: string): Promise<QueryExecutionResult> {
     const startedAt = Date.now();
-    const database = new Database(this.config.filePath, {
+    const database = new Database(this.config.database, {
       readonly: true,
       fileMustExist: true,
     });
@@ -511,46 +545,58 @@ class SQLiteQueryAdapter implements DatabaseQueryAdapter {
     } finally {
       database.close();
     }
-  };
-};
+  }
+}
 
 class MongoDBQueryAdapter implements DatabaseQueryAdapter {
   readonly type = "mongodb" as const;
-  private readonly config: Extract<DatabaseConnectionConfig, { type: "mongodb" }>;
+  private readonly config: Extract<
+    DatabaseConnectionConfig,
+    { type: "mongodb" }
+  >;
 
   constructor(config: Extract<DatabaseConnectionConfig, { type: "mongodb" }>) {
     this.config = config;
-  };
+  }
 
   private getUri(): string {
     const username = encodeURIComponent(this.config.username);
     const password = encodeURIComponent(this.config.password);
 
     return `mongodb://${username}:${password}@${this.config.host}:${this.config.port}/?authSource=admin`;
-  };
+  }
 
   async getSchema(): Promise<DatabaseSchema> {
     const client = new MongoClient(this.getUri(), {
       serverSelectionTimeoutMS: QUERY_TIMEOUT_MS,
+      tls: this.config.ssl,
     });
 
     try {
       await client.connect();
 
       const database = client.db(this.config.database);
-      const collectionNames = await database.listCollections({}, {
-        nameOnly: true,
-      }).toArray();
+      const collectionNames = await database
+        .listCollections(
+          {},
+          {
+            nameOnly: true,
+          },
+        )
+        .toArray();
 
       const tables: DatabaseTable[] = [];
       const columns: Record<string, DatabaseColumn[]> = {};
 
       for (const collectionInfo of collectionNames) {
         const collection = database.collection(collectionInfo.name);
-        const sample = await collection.findOne({}, {
-          projection: { _id: 0 },
-          maxTimeMS: QUERY_TIMEOUT_MS,
-        });
+        const sample = await collection.findOne(
+          {},
+          {
+            projection: { _id: 0 },
+            maxTimeMS: QUERY_TIMEOUT_MS,
+          },
+        );
 
         tables.push({
           name: collectionInfo.name,
@@ -560,7 +606,12 @@ class MongoDBQueryAdapter implements DatabaseQueryAdapter {
         columns[collectionInfo.name] = Object.entries(sample ?? {}).map(
           ([name, value]) => ({
             name,
-            type: value === null ? "null" : Array.isArray(value) ? "array" : typeof value,
+            type:
+              value === null
+                ? "null"
+                : Array.isArray(value)
+                  ? "array"
+                  : typeof value,
             nullable: true,
             primaryKey: name === "_id",
           }),
@@ -571,7 +622,7 @@ class MongoDBQueryAdapter implements DatabaseQueryAdapter {
     } finally {
       await client.close();
     }
-  };
+  }
 
   async executeReadQuery(query: string): Promise<QueryExecutionResult> {
     const startedAt = Date.now();
@@ -606,19 +657,25 @@ class MongoDBQueryAdapter implements DatabaseQueryAdapter {
         return createExecutionResult([{ count }], startedAt);
       }
 
-      const rows = await collection.find(input.filter ?? {}, {
-        projection: input.projection,
-        maxTimeMS: QUERY_TIMEOUT_MS,
-      })
+      const rows = await collection
+        .find(input.filter ?? {}, {
+          projection: input.projection,
+          maxTimeMS: QUERY_TIMEOUT_MS,
+        })
         .sort(input.sort ?? {})
-        .limit(Math.min(Math.max(input.limit ?? MAX_QUERY_ROWS, 1), MAX_QUERY_ROWS))
+        .limit(
+          Math.min(Math.max(input.limit ?? MAX_QUERY_ROWS, 1), MAX_QUERY_ROWS),
+        )
         .toArray();
 
-      return createExecutionResult(rows as Record<string, unknown>[], startedAt);
+      return createExecutionResult(
+        rows as Record<string, unknown>[],
+        startedAt,
+      );
     } finally {
       await client.close();
     }
-  };
+  }
 }
 
 export function createDatabaseQueryAdapter(
@@ -645,7 +702,9 @@ export function createDatabaseQueryAdapter(
 
     default: {
       const unsupportedDatabase: never = config;
-      throw new Error(`Unsupported database type: ${JSON.stringify(unsupportedDatabase)}`);
+      throw new Error(
+        `Unsupported database type: ${JSON.stringify(unsupportedDatabase)}`,
+      );
     }
   }
-};
+}

@@ -5,6 +5,10 @@ const FORBIDDEN_SQL_PATTERN =
 
 const FORBIDDEN_COMMENT_PATTERN = /(--|\/\*|\*\/|#)/;
 
+const FORBIDDEN_LOCK_PATTERN = /\bfor\s+(update|share)\b/i;
+
+const FORBIDDEN_DELAY_PATTERN = /\b(pg_sleep|sleep)\s*\(/i;
+
 export function validateReadOnlySQL(query: string): string {
   const normalizedQuery = query.trim();
 
@@ -34,11 +38,11 @@ export function validateReadOnlySQL(query: string): string {
     throw new Error("The query contains a forbidden SQL operation.");
   }
 
-  if (/\bfor\s+(update|share)\b/i.test(withoutTrailingSemicolon)) {
+  if (FORBIDDEN_LOCK_PATTERN.test(withoutTrailingSemicolon)) {
     throw new Error("Locking queries are not allowed.");
   }
 
-  if (/\bpg_sleep\b|\bsleep\s*\(/i.test(withoutTrailingSemicolon)) {
+  if (FORBIDDEN_DELAY_PATTERN.test(withoutTrailingSemicolon)) {
     throw new Error("Time-delay functions are not allowed.");
   }
 

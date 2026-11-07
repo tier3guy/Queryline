@@ -13,7 +13,7 @@ export function createDatabaseTools(adapter: DatabaseQueryAdapter) {
     {
       name: "get_database_schema",
       description:
-        "Retrieve the actual tables, collections, columns, data types and primary keys of the currently connected database. Always use this before generating a query when schema information is needed.",
+        "Retrieve the actual database schema, including tables, collections, columns, data types and primary keys. Use this tool before generating queries. Never assume schema information.",
       schema: z.object({}),
     },
   );
@@ -27,9 +27,9 @@ export function createDatabaseTools(adapter: DatabaseQueryAdapter) {
     {
       name: "execute_read_query",
       description:
-        "Execute one read-only query against the currently connected database. For SQL databases, provide a single SELECT or WITH query. For MongoDB, provide JSON with collection, operation (find or count), filter, projection, sort and limit. Never use this tool for writes or schema changes.",
+        "Execute exactly one read-only query against the connected database. SQL databases accept a single SELECT or WITH query. MongoDB accepts JSON containing collection, operation, filter, projection, sort and limit. The result contains columns, rows, rowCount and executionTime. Never execute write operations or schema changes.",
       schema: z.object({
-        query: z.string().min(1).max(12000),
+        query: z.string().trim().min(1).max(12000),
       }),
     },
   );
