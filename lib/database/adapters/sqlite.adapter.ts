@@ -11,7 +11,7 @@ export const testSQLiteConnection = async (
   let database: Database.Database | null = null;
 
   try {
-    database = new Database(config.filePath, {
+    database = new Database(config.database, {
       readonly: true,
       fileMustExist: true,
       timeout: 8000,
