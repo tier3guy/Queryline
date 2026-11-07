@@ -59,7 +59,6 @@ export const ConnectionForm = ({ onSave }: ConnectionFormProps) => {
 
   const selectedType = useWatch({ control, name: "type" });
   const sslEnabled = useWatch({ control, name: "ssl" });
-  const formValues = useWatch({ control });
 
   const handleDatabaseChange = (type: "postgresql" | "mysql") => {
     const selectedDatabase = DATABASE_OPTIONS.find(
