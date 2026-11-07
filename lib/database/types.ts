@@ -11,8 +11,7 @@ export interface BaseConnectionConfig {
   type: DatabaseType;
 };
 
-export interface NetworkConnectionConfig
-  extends BaseConnectionConfig {
+export interface NetworkConnectionConfig extends BaseConnectionConfig {
   host: string;
   port: number;
   database: string;
@@ -21,15 +20,38 @@ export interface NetworkConnectionConfig
   ssl: boolean;
 };
 
-export interface PostgreSQLConfig
-  extends NetworkConnectionConfig {
+export interface PostgreSQLConfig extends NetworkConnectionConfig {
   type: "postgresql";
 };
 
-export interface MySQLConfig
-  extends NetworkConnectionConfig {
+export interface MySQLConfig extends NetworkConnectionConfig {
   type: "mysql";
 };
+
+export interface MariaDBConfig extends NetworkConnectionConfig {
+  type: "mariadb";
+}
+
+export interface MongoDBConfig extends NetworkConnectionConfig {
+  type: "mongodb";
+}
+
+export interface SQLServerConfig extends NetworkConnectionConfig {
+  type: "sqlserver";
+}
+
+export interface SQLiteConfig extends BaseConnectionConfig {
+  type: "sqlite";
+  filePath: string;
+}
+
+export type DatabaseConnectionConfig =
+  | PostgreSQLConfig
+  | MySQLConfig
+  | MariaDBConfig
+  | MongoDBConfig
+  | SQLServerConfig
+  | SQLiteConfig;
 
 export interface ConnectionTestResult {
   success: boolean;

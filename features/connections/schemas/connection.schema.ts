@@ -27,20 +27,51 @@ const commonFields = {
   ssl: z.boolean().default(false),
 };
 
-export const connectionTestSchema = z.discriminatedUnion(
-  "type",
-  [
-    z.object({
-      ...commonFields,
-      type: z.literal("postgresql"),
-    }),
+const baseSchema = {
+  name: z.string().min(1, "Connection name is required."),
+  database: z.string().min(1, "Database name is required."),
+};
 
-    z.object({
-      ...commonFields,
-      type: z.literal("mysql"),
-    }),
-  ]
-);
+const networkSchema = {
+  ...baseSchema,
+  host: z.string().min(1, "Host is required."),
+  port: z.coerce.number().int().min(1).max(65535),
+  username: z.string().min(1, "Username is required."),
+  password: z.string().min(1, "Password is required."),
+  ssl: z.boolean().default(false),
+};
+
+export const connectionTestSchema = z.discriminatedUnion("type", [
+  z.object({
+    ...networkSchema,
+    type: z.literal("postgresql"),
+  }),
+
+  z.object({
+    ...networkSchema,
+    type: z.literal("mysql"),
+  }),
+
+  z.object({
+    ...networkSchema,
+    type: z.literal("mariadb"),
+  }),
+
+  z.object({
+    ...networkSchema,
+    type: z.literal("mongodb"),
+  }),
+
+  z.object({
+    ...networkSchema,
+    type: z.literal("sqlserver"),
+  }),
+
+  z.object({
+    ...baseSchema,
+    type: z.literal("sqlite"),
+  }),
+]);
 
 export type ConnectionTestInput = z.infer<
   typeof connectionTestSchema
