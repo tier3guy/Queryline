@@ -1,10 +1,8 @@
-
 import { NextResponse } from "next/server";
 
 import { databaseQuerySchema } from "@/features/ai/schemas/query.schema";
-import { createDatabaseAgent } from "@/features/ai/services/database-agent";
-import { getEnvironmentDatabaseConfig } from "@/lib/database/env";
 import { createDatabaseQueryAdapter } from "@/lib/database/query-adapters";
+import { createDatabaseAgent } from "@/features/ai/services/database-agent";
 
 function extractText(content: unknown): string {
   if (typeof content === "string") {
@@ -89,6 +87,11 @@ export async function POST(request: Request) {
     const validation = databaseQuerySchema.safeParse(body);
 
     if (!validation.success) {
+      console.error(
+        "Queryline request validation failed:",
+        validation.error.flatten(),
+      );
+
       return NextResponse.json(
         {
           success: false,
@@ -99,9 +102,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const { message } = validation.data;
+    const { message, connection } = validation.data;
 
-    const connection = getEnvironmentDatabaseConfig();
     const adapter = createDatabaseQueryAdapter(connection);
     const agent = createDatabaseAgent(adapter, connection.type);
 
@@ -206,4 +208,4 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
-};
+}

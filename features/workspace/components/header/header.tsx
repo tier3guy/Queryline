@@ -1,14 +1,33 @@
+
 "use client";
 
 interface WorkspaceHeaderProps {
   onMenuClick: () => void;
   onConnectClick: () => void;
+  conversationTitle?: string;
+  connectionName?: string;
+  connectionType?: string;
+  isConnected: boolean;
 };
 
 export default function WorkspaceHeader({
   onMenuClick,
   onConnectClick,
+  conversationTitle,
+  connectionName,
+  connectionType,
+  isConnected,
 }: WorkspaceHeaderProps) {
+  const title = conversationTitle || connectionName || "Queryline";
+
+  const subtitle = conversationTitle
+    ? isConnected
+      ? `Connected to ${connectionName}`
+      : "Database connection unavailable"
+    : connectionName
+      ? connectionType ?? "Database connection"
+      : "Your AI database workspace";
+
   return (
     <header className="flex h-16 shrink-0 items-center justify-between border-b border-border px-4 sm:px-6">
       <div className="flex min-w-0 items-center gap-3">
@@ -23,19 +42,31 @@ export default function WorkspaceHeader({
 
         <div className="min-w-0">
           <p className="truncate text-sm font-medium">
-            New conversation
+            {title}
           </p>
-          <p className="text-xs text-muted-foreground">
-            Your AI database workspace
+
+          <p className="truncate text-xs text-muted-foreground">
+            {subtitle}
           </p>
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex shrink-0 items-center gap-3">
         <div className="hidden items-center gap-2 rounded-lg border border-border px-3 py-2 sm:flex">
-          <span className="size-1.5 rounded-full bg-muted-foreground/50" />
+          <span
+            className={`size-1.5 rounded-full ${
+              isConnected
+                ? "bg-emerald-500"
+                : "bg-muted-foreground/50"
+            }`}
+          />
+
           <span className="text-xs text-muted-foreground">
-            No database connected
+            {isConnected
+              ? "Connected"
+              : connectionName
+                ? "Connection unavailable"
+                : "No database connected"}
           </span>
         </div>
 
@@ -44,7 +75,9 @@ export default function WorkspaceHeader({
           onClick={onConnectClick}
           className="rounded-lg bg-foreground px-3.5 py-2 text-xs font-medium text-background transition-opacity hover:opacity-85 sm:text-sm"
         >
-          Connect database
+          {isConnected || connectionName
+            ? "Add connection"
+            : "Connect database"}
         </button>
       </div>
     </header>

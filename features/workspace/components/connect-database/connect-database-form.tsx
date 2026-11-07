@@ -1,11 +1,13 @@
-
 "use client";
 
 import { useState } from "react";
 import Icon from "@/components/icons";
+import type { FormEvent } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { testConnection } from "@/features/connections/services/connection-api";
 import type {
+  ConnectionTestResult,
   DatabaseConnectionConfig,
   DatabaseType,
 } from "@/lib/database/types";
@@ -13,7 +15,8 @@ import type {
 interface ConnectDatabaseFormProps {
   onClose: () => void;
   onConnect: (config: DatabaseConnectionConfig) => void;
-};
+  initialConfig?: DatabaseConnectionConfig | null;
+}
 
 interface FormState {
   name: string;
@@ -24,7 +27,7 @@ interface FormState {
   password: string;
   filePath: string;
   ssl: boolean;
-};
+}
 
 const databaseOptions: {
   value: DatabaseType;
@@ -83,17 +86,67 @@ const initialFormState: FormState = {
 export default function ConnectDatabaseForm({
   onClose,
   onConnect,
+  initialConfig = null,
 }: ConnectDatabaseFormProps) {
-  const [databaseType, setDatabaseType] =
-    useState<DatabaseType>("postgresql");
-  const [form, setForm] = useState<FormState>(initialFormState);
+  const [databaseType, setDatabaseType] = useState<DatabaseType>(
+    initialConfig?.type ?? "postgresql",
+  );
+
+  const [form, setForm] = useState<FormState>(() => {
+    if (!initialConfig) {
+      return initialFormState;
+    }
+
+    if (initialConfig.type === "sqlite") {
+      return {
+        ...initialFormState,
+        name: initialConfig.name,
+        filePath: initialConfig.database,
+      };
+    }
+
+    return {
+      ...initialFormState,
+      name: initialConfig.name,
+      host: initialConfig.host,
+      port: String(initialConfig.port),
+      database: initialConfig.database,
+      username: initialConfig.username,
+      password: initialConfig.password,
+      ssl: initialConfig.ssl,
+    };
+  });
   const [showPassword, setShowPassword] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
+  const [testResult, setTestResult] = useState<ConnectionTestResult | null>(
+    null,
+  );
+  const [testError, setTestError] = useState<string | null>(null);
 
   const selectedDatabase = databaseOptions.find(
     (database) => database.value === databaseType,
   );
 
   const isSQLite = databaseType === "sqlite";
+  const isSaveEnabled = testResult?.success === true && !isTesting;
+
+  const isFormValid = Boolean(
+    form.name.trim() &&
+    (isSQLite
+      ? form.filePath.trim()
+      : form.host.trim() &&
+        form.database.trim() &&
+        form.username.trim() &&
+        form.password &&
+        Number.isInteger(Number(form.port)) &&
+        Number(form.port) >= 1 &&
+        Number(form.port) <= 65535),
+  );
+
+  const invalidateTest = () => {
+    setTestResult(null);
+    setTestError(null);
+  };
 
   const updateField = <K extends keyof FormState>(
     field: K,
@@ -103,6 +156,8 @@ export default function ConnectDatabaseForm({
       ...previous,
       [field]: value,
     }));
+
+    invalidateTest();
   };
 
   const handleDatabaseTypeChange = (type: DatabaseType) => {
@@ -115,19 +170,17 @@ export default function ConnectDatabaseForm({
       ...previous,
       port: selected?.defaultPort ?? "",
     }));
+
+    invalidateTest();
   };
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
+  const buildConnectionConfig = (): DatabaseConnectionConfig => {
     if (isSQLite) {
-      onConnect({
+      return {
         type: "sqlite",
         name: form.name.trim(),
         database: form.filePath.trim(),
-      });
-
-      return;
+      };
     }
 
     const commonConfig = {
@@ -142,40 +195,73 @@ export default function ConnectDatabaseForm({
 
     switch (databaseType) {
       case "postgresql":
-        onConnect({
+        return {
           type: "postgresql",
           ...commonConfig,
-        });
-        break;
+        };
 
       case "mysql":
-        onConnect({
+        return {
           type: "mysql",
           ...commonConfig,
-        });
-        break;
+        };
 
       case "mariadb":
-        onConnect({
+        return {
           type: "mariadb",
           ...commonConfig,
-        });
-        break;
+        };
 
       case "mongodb":
-        onConnect({
+        return {
           type: "mongodb",
           ...commonConfig,
-        });
-        break;
+        };
 
       case "sqlserver":
-        onConnect({
+        return {
           type: "sqlserver",
           ...commonConfig,
-        });
-        break;
+        };
     }
+  };
+
+  const handleTestConnection = async () => {
+    if (!isFormValid || isTesting) {
+      return;
+    }
+
+    setIsTesting(true);
+    setTestResult(null);
+    setTestError(null);
+
+    try {
+      const result = await testConnection(buildConnectionConfig());
+
+      setTestResult(result);
+
+      if (!result.success) {
+        setTestError(result.message);
+      }
+    } catch (error) {
+      setTestError(
+        error instanceof Error
+          ? error.message
+          : "Unable to test the database connection.",
+      );
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!isSaveEnabled) {
+      return;
+    }
+
+    onConnect(buildConnectionConfig());
   };
 
   return (
@@ -217,10 +303,7 @@ export default function ConnectDatabaseForm({
           </button>
         </div>
 
-        <form
-          onSubmit={handleSubmit}
-          className="flex min-h-0 flex-1 flex-col"
-        >
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
           <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5">
             <div className="space-y-2">
               <Label htmlFor="database-type">Database type</Label>
@@ -228,10 +311,9 @@ export default function ConnectDatabaseForm({
               <select
                 id="database-type"
                 value={databaseType}
+                disabled={isTesting}
                 onChange={(event) =>
-                  handleDatabaseTypeChange(
-                    event.target.value as DatabaseType,
-                  )
+                  handleDatabaseTypeChange(event.target.value as DatabaseType)
                 }
                 className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20"
               >
@@ -253,9 +335,8 @@ export default function ConnectDatabaseForm({
                 id="connection-name"
                 placeholder="e.g. Production Database"
                 value={form.name}
-                onChange={(event) =>
-                  updateField("name", event.target.value)
-                }
+                disabled={isTesting}
+                onChange={(event) => updateField("name", event.target.value)}
                 required
               />
             </div>
@@ -267,6 +348,7 @@ export default function ConnectDatabaseForm({
                   id="sqlite-file-path"
                   placeholder="/path/to/database.sqlite"
                   value={form.filePath}
+                  disabled={isTesting}
                   onChange={(event) =>
                     updateField("filePath", event.target.value)
                   }
@@ -285,6 +367,7 @@ export default function ConnectDatabaseForm({
                       id="database-host"
                       placeholder="localhost"
                       value={form.host}
+                      disabled={isTesting}
                       onChange={(event) =>
                         updateField("host", event.target.value)
                       }
@@ -301,6 +384,7 @@ export default function ConnectDatabaseForm({
                       max="65535"
                       placeholder="5432"
                       value={form.port}
+                      disabled={isTesting}
                       onChange={(event) =>
                         updateField("port", event.target.value)
                       }
@@ -315,6 +399,7 @@ export default function ConnectDatabaseForm({
                     id="database-name"
                     placeholder="my_database"
                     value={form.database}
+                    disabled={isTesting}
                     onChange={(event) =>
                       updateField("database", event.target.value)
                     }
@@ -328,6 +413,7 @@ export default function ConnectDatabaseForm({
                     id="database-username"
                     placeholder="Database username"
                     value={form.username}
+                    disabled={isTesting}
                     onChange={(event) =>
                       updateField("username", event.target.value)
                     }
@@ -344,6 +430,7 @@ export default function ConnectDatabaseForm({
                       type={showPassword ? "text" : "password"}
                       placeholder="Database password"
                       value={form.password}
+                      disabled={isTesting}
                       onChange={(event) =>
                         updateField("password", event.target.value)
                       }
@@ -353,18 +440,13 @@ export default function ConnectDatabaseForm({
 
                     <button
                       type="button"
-                      onClick={() =>
-                        setShowPassword((previous) => !previous)
-                      }
+                      onClick={() => setShowPassword((previous) => !previous)}
                       aria-label={
                         showPassword ? "Hide password" : "Show password"
                       }
                       className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-foreground"
                     >
-                      <Icon
-                        name={showPassword ? "eye-off" : "eye"}
-                        size={17}
-                      />
+                      <Icon name={showPassword ? "eye-off" : "eye"} size={17} />
                     </button>
                   </div>
                 </div>
@@ -373,6 +455,7 @@ export default function ConnectDatabaseForm({
                   <input
                     type="checkbox"
                     checked={form.ssl}
+                    disabled={isTesting}
                     onChange={(event) =>
                       updateField("ssl", event.target.checked)
                     }
@@ -388,9 +471,54 @@ export default function ConnectDatabaseForm({
                 </label>
               </>
             )}
+
+            {isTesting && (
+              <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
+                <Icon name="loading" size={16} />
+                Testing database connection...
+              </div>
+            )}
+
+            {testResult?.success && !isTesting && (
+              <div className="space-y-1 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
+                <div className="flex items-center gap-2 text-sm font-medium text-emerald-600">
+                  <Icon name="checkmark-circle" size={16} />
+                  Connection successful
+                </div>
+
+                <p className="text-xs text-muted-foreground">
+                  {testResult.message}
+                </p>
+
+                {testResult.latency !== undefined && (
+                  <p className="text-xs text-muted-foreground">
+                    Latency: {testResult.latency} ms
+                  </p>
+                )}
+
+                {testResult.serverVersion && (
+                  <p className="text-xs text-muted-foreground">
+                    Server: {testResult.serverVersion}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {testError && (
+              <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3">
+                <div className="flex items-center gap-2 text-sm font-medium text-destructive">
+                  <Icon name="alert-circle" size={16} />
+                  Connection failed
+                </div>
+
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {testError}
+                </p>
+              </div>
+            )}
           </div>
 
-          <div className="flex items-center justify-end gap-3 border-t border-border bg-muted/20 px-6 py-4">
+          <div className="flex flex-wrap items-center justify-end gap-3 border-t border-border bg-muted/20 px-6 py-4">
             <button
               type="button"
               onClick={onClose}
@@ -400,14 +528,24 @@ export default function ConnectDatabaseForm({
             </button>
 
             <button
-              type="submit"
-              className="rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-background transition-opacity hover:opacity-85"
+              type="button"
+              onClick={handleTestConnection}
+              disabled={!isFormValid || isTesting}
+              className="rounded-lg border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
             >
-              Connect database
+              {isTesting ? "Testing..." : "Test Connection"}
+            </button>
+
+            <button
+              type="submit"
+              disabled={!isSaveEnabled}
+              className="rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-background transition-opacity hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Save Connection
             </button>
           </div>
         </form>
       </div>
     </div>
   );
-};
+}

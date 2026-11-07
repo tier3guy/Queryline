@@ -1,27 +1,84 @@
-
 "use client";
 
-import { useState } from "react";
+import type { SavedDatabaseConnection, WorkspaceConversation } from "@/features/workspace/types";
 
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
   onNewChat: () => void;
+  onNewConnection: () => void;
+  conversations: WorkspaceConversation[];
+  connections: SavedDatabaseConnection[];
+  activeConversationId: string | null;
+  activeConnectionId: string | null;
+  onSelectConversation: (conversationId: string) => void;
+  onSelectConnection: (connectionId: string) => void;
+  onDeleteConnection: (connectionId: string) => void;
+  onDeleteConversation: (conversationId: string) => void;
+  onClearHistory: () => void;
 };
 
-const conversations = [
-  { id: "1", title: "Explore customer database" },
-  { id: "2", title: "Monthly revenue analysis" },
-  { id: "3", title: "Find inactive users" },
-  { id: "4", title: "Product performance" },
-];
+const databaseLabels: Record<string, string> = {
+  postgresql: "PostgreSQL",
+  mysql: "MySQL",
+  mariadb: "MariaDB",
+  mongodb: "MongoDB",
+  sqlite: "SQLite",
+  sqlserver: "SQL Server",
+};
+
+const databaseInitials: Record<string, string> = {
+  postgresql: "PG",
+  mysql: "MY",
+  mariadb: "MA",
+  mongodb: "MG",
+  sqlite: "SQ",
+  sqlserver: "MS",
+};
 
 export default function Sidebar({
   isOpen,
   onClose,
   onNewChat,
+  onNewConnection,
+  conversations,
+  connections,
+  activeConversationId,
+  activeConnectionId,
+  onSelectConversation,
+  onSelectConnection,
+  onDeleteConnection,
+  onDeleteConversation,
+  onClearHistory,
 }: SidebarProps) {
-  const [activeConversation, setActiveConversation] = useState("1");
+  const handleDeleteConnection = (connectionId: string, name: string) => {
+    if (
+      window.confirm(
+        `Delete connection "${name}"? Its conversations will be preserved.`,
+      )
+    ) {
+      onDeleteConnection(connectionId);
+    }
+  };
+
+  const handleDeleteConversation = (
+    conversationId: string,
+    title: string,
+  ) => {
+    if (window.confirm(`Delete conversation "${title}"? This cannot be undone.`)) {
+      onDeleteConversation(conversationId);
+    }
+  };
+
+  const handleClearHistory = () => {
+    if (
+      window.confirm(
+        "Delete all conversation history? Your saved database connections will not be affected.",
+      )
+    ) {
+      onClearHistory();
+    }
+  };
 
   return (
     <>
@@ -44,6 +101,7 @@ export default function Sidebar({
             <div className="flex size-8 items-center justify-center rounded-lg bg-orange-500 text-lg font-semibold text-white">
               q
             </div>
+
             <span className="text-[17px] font-semibold tracking-tight">
               Queryline
             </span>
@@ -59,7 +117,7 @@ export default function Sidebar({
           </button>
         </div>
 
-        <div className="p-4">
+        <div className="space-y-2 p-4">
           <button
             type="button"
             onClick={() => {
@@ -69,53 +127,166 @@ export default function Sidebar({
             className="flex w-full items-center justify-center gap-2 rounded-lg bg-foreground px-4 py-2.5 text-sm font-medium text-background transition-opacity hover:opacity-85"
           >
             <span className="text-lg leading-none">+</span>
-            New chat
-            <span className="ml-auto text-xs text-background/50">⌘ K</span>
+            New Chat
           </button>
-        </div>
 
-        <div className="flex-1 overflow-y-auto px-3 pb-4">
-          <div className="mb-3 px-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-            Recent conversations
-          </div>
-
-          <div className="space-y-1">
-            {conversations.map((conversation) => (
-              <button
-                key={conversation.id}
-                type="button"
-                onClick={() => {
-                  setActiveConversation(conversation.id);
-                  onClose();
-                }}
-                className={`w-full truncate rounded-lg px-3 py-2.5 text-left text-[13px] transition-colors ${
-                  activeConversation === conversation.id
-                    ? "bg-muted font-medium text-foreground"
-                    : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
-                }`}
-              >
-                {conversation.title}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="border-t border-border p-3">
           <button
             type="button"
-            className="flex w-full items-center gap-3 rounded-lg p-2.5 text-left transition-colors hover:bg-muted"
+            onClick={() => {
+              onNewConnection();
+              onClose();
+            }}
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium transition-colors hover:bg-muted"
           >
-            <div className="flex size-9 items-center justify-center rounded-full bg-muted text-sm font-semibold">
-              AG
-            </div>
-
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">Guest user</p>
-              <p className="text-xs text-muted-foreground">Free workspace</p>
-            </div>
-
-            <span className="text-muted-foreground">···</span>
+            <span className="text-lg leading-none">+</span>
+            New Connection
           </button>
+        </div>
+
+        <div className="flex-1 space-y-6 overflow-y-auto px-3 pb-4">
+          <section>
+            <div className="mb-3 flex items-center justify-between px-2">
+              <h2 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                Connections
+              </h2>
+
+              <span className="text-[10px] tabular-nums text-muted-foreground">
+                {connections.length}
+              </span>
+            </div>
+
+            {connections.length > 0 ? (
+              <div className="space-y-1">
+                {connections.map((connection) => (
+                  <div
+                    key={connection.id}
+                    className={`group flex items-center gap-1 rounded-lg pr-1 transition-colors ${
+                      activeConnectionId === connection.id
+                        ? "bg-muted"
+                        : "hover:bg-muted/60"
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onSelectConnection(connection.id);
+                        onClose();
+                      }}
+                      className={`flex min-w-0 flex-1 items-center gap-3 rounded-lg px-3 py-2.5 text-left ${
+                        activeConnectionId === connection.id
+                          ? "text-foreground"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-xs font-semibold">
+                        {databaseInitials[connection.config.type]}
+                      </span>
+
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[13px] font-medium">
+                          {connection.config.name}
+                        </span>
+
+                        <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
+                          {databaseLabels[connection.config.type]}
+                        </span>
+                      </span>
+
+                      {activeConnectionId === connection.id && (
+                        <span className="size-1.5 shrink-0 rounded-full bg-emerald-500" />
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      aria-label={`Delete ${connection.config.name}`}
+                      title="Delete connection"
+                      onClick={() =>
+                        handleDeleteConnection(
+                          connection.id,
+                          connection.config.name,
+                        )
+                      }
+                      className="shrink-0 rounded-full p-2 text-muted-foreground opacity-0 transition-all hover:bg-background hover:text-destructive group-hover:opacity-100 focus:opacity-100"
+                    >
+                      <span aria-hidden="true">×</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="px-3 py-2 text-xs leading-5 text-muted-foreground">
+                No database connections yet.
+              </p>
+            )}
+          </section>
+
+          <section>
+            <div className="mb-3 flex items-center justify-between px-2">
+              <h2 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                Recent conversations
+              </h2>
+
+              {/* {conversations.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleClearHistory}
+                  className="text-[10px] font-medium text-muted-foreground transition-colors hover:text-destructive"
+                >
+                  Clear all
+                </button>
+              )} */}
+            </div>
+
+            {conversations.length > 0 ? (
+              <div className="space-y-1">
+                {conversations.map((conversation) => (
+                  <div
+                    key={conversation.id}
+                    className={`group flex items-center gap-1 rounded-lg pr-1 transition-colors ${
+                      activeConversationId === conversation.id
+                        ? "bg-muted"
+                        : "hover:bg-muted/60"
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onSelectConversation(conversation.id);
+                        onClose();
+                      }}
+                      className={`min-w-0 flex-1 truncate rounded-lg px-3 py-2.5 text-left text-[13px] transition-colors ${
+                        activeConversationId === conversation.id
+                          ? "font-medium text-foreground"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {conversation.title}
+                    </button>
+
+                    <button
+                      type="button"
+                      aria-label={`Delete ${conversation.title}`}
+                      title="Delete conversation"
+                      onClick={() =>
+                        handleDeleteConversation(
+                          conversation.id,
+                          conversation.title,
+                        )
+                      }
+                      className="shrink-0 rounded-full m-2 p-2 text-muted-foreground opacity-0 transition-all hover:bg-background hover:text-destructive group-hover:opacity-100 focus:opacity-100"
+                    >
+                      <span aria-hidden="true">×</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="px-3 py-2 text-xs leading-5 text-muted-foreground">
+                Your conversations will appear here.
+              </p>
+            )}
+          </section>
         </div>
       </aside>
     </>
