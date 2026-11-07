@@ -98,15 +98,7 @@ export async function POST(request: NextRequest) {
     const startedAt = performance.now();
 
     try {
-      const connectionResult = await testDatabaseConnection(
-        config.type === "sqlite"
-          ? {
-              type: "sqlite",
-              name: config.name,
-              filePath: config.database,
-            }
-          : config
-      );
+      const connectionResult = await testDatabaseConnection(config);
 
       const latency = Math.round(
         performance.now() - startedAt

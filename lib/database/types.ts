@@ -42,7 +42,7 @@ export interface SQLServerConfig extends NetworkConnectionConfig {
 
 export interface SQLiteConfig extends BaseConnectionConfig {
   type: "sqlite";
-  filePath: string;
+  database: string;
 }
 
 export type DatabaseConnectionConfig =

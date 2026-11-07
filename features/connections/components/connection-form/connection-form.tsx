@@ -13,9 +13,9 @@ import { testConnection } from "@/features/connections/services/connection-api";
 import { connectionTestSchema } from "@/features/connections/schemas/connection.schema";
 import type { ConnectionTestInput } from "@/features/connections/schemas/connection.schema";
 
-// interface ConnectionFormProps {
-//   onSave: (values: ConnectionTestInput) => Promise<void> | void;
-// }
+interface ConnectionFormProps {
+  onSave: (values: ConnectionTestInput) => Promise<void> | void;
+}
 
 const DATABASE_OPTIONS = [
   { label: "PostgreSQL", value: "postgresql", port: 5432 },
@@ -26,7 +26,7 @@ const DATABASE_OPTIONS = [
   { label: "SQL Server", value: "sqlserver", port: 1433 },
 ] as const;
 
-export const ConnectionForm = () => {
+export const ConnectionForm = ({ onSave }: ConnectionFormProps) => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -113,7 +113,7 @@ export const ConnectionForm = () => {
 
     try {
       setSaving(true);
-    //   await onSave(values);
+      await onSave(values);
     } catch (error) {
       setResult({
         success: false,
@@ -405,8 +405,7 @@ export const ConnectionForm = () => {
             disabled={
               loading ||
               saving ||
-              !result?.success ||
-              testedValues !== JSON.stringify(formValues)
+              !result?.success
             }
             onClick={handleSubmit(handleSaveConnection)}
             className="gap-2"
