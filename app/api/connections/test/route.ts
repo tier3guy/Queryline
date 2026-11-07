@@ -98,16 +98,15 @@ export async function POST(request: NextRequest) {
     const startedAt = performance.now();
 
     try {
-      const serverVersion =
-        await testDatabaseConnection(
-          config.type === "sqlite"
-            ? {
-                type: "sqlite",
-                name: config.name,
-                filePath: config.database,
-              }
-            : config
-        );
+      const connectionResult = await testDatabaseConnection(
+        config.type === "sqlite"
+          ? {
+              type: "sqlite",
+              name: config.name,
+              filePath: config.database,
+            }
+          : config
+      );
 
       const latency = Math.round(
         performance.now() - startedAt
@@ -117,7 +116,7 @@ export async function POST(request: NextRequest) {
         success: true,
         message: "Database connection successful.",
         latency,
-        serverVersion,
+        serverVersion: connectionResult.serverVersion,
         testedAt: new Date().toISOString(),
       });
     } catch (error) {

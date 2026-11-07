@@ -42,7 +42,7 @@ export function DatabaseChat({ connection }: DatabaseChatProps) {
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
     <section className="space-y-4">

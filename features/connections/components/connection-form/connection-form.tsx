@@ -20,7 +20,11 @@ import type { ConnectionTestInput } from "@/features/connections/schemas/connect
 const DATABASE_OPTIONS = [
   { label: "PostgreSQL", value: "postgresql", port: 5432 },
   { label: "MySQL", value: "mysql", port: 3306 },
-];
+  { label: "MariaDB", value: "mariadb", port: 3306 },
+  { label: "MongoDB", value: "mongodb", port: 27017 },
+  { label: "SQLite", value: "sqlite", port: 0 },
+  { label: "SQL Server", value: "sqlserver", port: 1433 },
+] as const;
 
 export const ConnectionForm = () => {
   const [loading, setLoading] = useState(false);
@@ -199,7 +203,7 @@ export const ConnectionForm = () => {
 
               <Input id="host" placeholder="localhost" {...register("host")} />
 
-              {errors.host && (
+              {"host" in errors && errors.host && (
                 <p className="text-xs text-destructive">
                   {errors.host.message}
                 </p>
@@ -216,7 +220,7 @@ export const ConnectionForm = () => {
                 {...register("port")}
               />
 
-              {errors.port && (
+              {"port" in errors && errors.port && (
                 <p className="text-xs text-destructive">
                   {errors.port.message}
                 </p>
@@ -251,7 +255,7 @@ export const ConnectionForm = () => {
               {...register("username")}
             />
 
-            {errors.username && (
+            {"username" in errors && errors.username && (
               <p className="text-xs text-destructive">
                 {errors.username.message}
               </p>
@@ -285,7 +289,7 @@ export const ConnectionForm = () => {
               </button>
             </div>
 
-            {errors.password && (
+            {"password" in errors && errors.password && (
               <p className="text-xs text-destructive">
                 {errors.password.message}
               </p>
