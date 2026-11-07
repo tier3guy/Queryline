@@ -1,13 +1,7 @@
-import { auth } from "@clerk/nextjs/server";
+// import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
-
-import {
-  connectionTestSchema,
-} from "@/features/connections/schemas/connection.schema";
-
-import {
-  testDatabaseConnection,
-} from "@/lib/database/connection-factory";
+import { testDatabaseConnection } from "@/lib/database/connection-factory";
+import { connectionTestSchema } from "@/features/connections/schemas/connection.schema";
 
 function getErrorCode(error: unknown): string | undefined {
   if (
@@ -105,7 +99,15 @@ export async function POST(request: NextRequest) {
 
     try {
       const serverVersion =
-        await testDatabaseConnection(config);
+        await testDatabaseConnection(
+          config.type === "sqlite"
+            ? {
+                type: "sqlite",
+                name: config.name,
+                filePath: config.database,
+              }
+            : config
+        );
 
       const latency = Math.round(
         performance.now() - startedAt
