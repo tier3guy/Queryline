@@ -2,22 +2,12 @@
 
 import { useState } from "react";
 import Chat from "@/features/workspace/components/chat/chat";
+import type { ChatMessage } from "@/features/workspace/types";
 import type { DatabaseConnectionConfig } from "@/lib/database/types";
 import Sidebar from "@/features/workspace/components/sidebar/sidebar";
 import Composer from "@/features/workspace/components/composer/composer";
 import WorkspaceHeader from "@/features/workspace/components/header/header";
-import type {
-  ChatMessage,
-  ChatQueryExecution,
-} from "@/features/workspace/types";
 import ConnectDatabaseForm from "@/features/workspace/components/connect-database/connect-database-form";
-
-interface QueryApiResponse {
-  success: boolean;
-  answer?: string;
-  queryExecutions?: ChatQueryExecution[];
-  message?: string;
-}
 
 export default function WorkspacePage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -128,7 +118,16 @@ export default function WorkspacePage() {
           }
 
           if (payload.type === "error") {
-            throw new Error(payload.message);
+            setMessages((previous) =>
+              previous.map((item) =>
+                item.id === assistantId
+                  ? {
+                      ...item,
+                      error: payload.error,
+                    }
+                  : item,
+              ),
+            );
           }
         }
       }

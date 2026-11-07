@@ -8,7 +8,7 @@ interface ChatProps {
   isLoading?: boolean;
   activeAssistantId?: string | null;
   onSuggestionClick: (suggestion: string) => void;
-}
+};
 
 const suggestions = [
   {
@@ -48,6 +48,60 @@ function formatCellValue(value: unknown): string {
   }
 
   return String(value);
+}
+
+function AssistantError({
+  error,
+}: {
+  error: NonNullable<ChatMessage["error"]>;
+}) {
+  const retryDate = error.retryAt ? new Date(error.retryAt) : null;
+  const isValidRetryDate =
+    retryDate !== null && !Number.isNaN(retryDate.getTime());
+
+  return (
+    <div
+      role="alert"
+      className="overflow-hidden rounded-xl border border-destructive/20 bg-destructive/5"
+    >
+      <div className="flex gap-3 p-4">
+        <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-destructive/10">
+          <span className="text-sm font-semibold text-destructive">!</span>
+        </div>
+
+        <div className="min-w-0 flex-1 space-y-2">
+          <p className="text-sm font-semibold text-foreground">
+            {error.title}
+          </p>
+
+          <p className="text-sm leading-6 text-muted-foreground">
+            {error.message}
+          </p>
+
+          {error.code === "RATE_LIMITED" && isValidRetryDate && (
+            <div className="rounded-lg border border-border/70 bg-background/70 p-3">
+              <p className="text-xs text-muted-foreground">
+                Free model quota resets at
+              </p>
+
+              <p className="mt-1 text-sm font-medium text-foreground">
+                {retryDate.toLocaleString(undefined, {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })}
+              </p>
+            </div>
+          )}
+
+          {error.action && (
+            <p className="border-t border-destructive/10 pt-3 text-xs leading-5 text-muted-foreground">
+              {error.action}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function QueryExecution({
@@ -209,8 +263,13 @@ export default function Chat({
         {messages.map((message) => {
           const isAssistant = message.role === "assistant";
           const isActiveAssistant = message.id === activeAssistantId;
+
           const isThinking =
-            isAssistant && isActiveAssistant && isLoading && !message.content;
+            isAssistant &&
+            isActiveAssistant &&
+            isLoading &&
+            !message.content &&
+            !message.error;
 
           return (
             <article
@@ -227,11 +286,21 @@ export default function Chat({
                 </div>
               ) : (
                 <div className="w-full min-w-0">
-                  {isThinking ? (
+                  {message.error ? (
+                    <>
+                      <p className="mb-3 text-xs font-semibold tracking-wide">
+                        QUERYLINE
+                      </p>
+
+                      <AssistantError error={message.error} />
+                    </>
+                  ) : isThinking ? (
                     <div className="flex items-center gap-3 py-3">
                       <div className="flex gap-1">
                         <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground" />
+
                         <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:150ms]" />
+
                         <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:300ms]" />
                       </div>
 
@@ -266,4 +335,4 @@ export default function Chat({
       </div>
     </div>
   );
-}
+};

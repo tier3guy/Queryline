@@ -1,3 +1,4 @@
+
 import { NextResponse } from "next/server";
 
 import { databaseQuerySchema } from "@/features/ai/schemas/query.schema";
@@ -34,6 +35,54 @@ function extractText(content: unknown): string {
     .join("");
 }
 
+function createErrorEvent(error: unknown) {
+  const details = error as {
+    statusCode?: number;
+    message?: string;
+    metadata?: {
+      headers?: Record<string, string>;
+    };
+    headers?: Record<string, string>;
+  };
+
+  const isRateLimited =
+    details.statusCode === 429 ||
+    details.message?.toLowerCase().includes("rate limit exceeded");
+
+  if (isRateLimited) {
+    const resetTimestamp = Number(
+      details.metadata?.headers?.["X-RateLimit-Reset"] ??
+        details.headers?.["x-ratelimit-reset"],
+    );
+
+    return {
+      type: "error",
+      error: {
+        code: "RATE_LIMITED",
+        title: "AI request limit reached",
+        message:
+          "The free AI model has reached its daily request limit. You can wait for the quota to reset or add credits to your OpenRouter account.",
+        retryAt:
+          Number.isFinite(resetTimestamp) && resetTimestamp > 0
+            ? new Date(resetTimestamp).toISOString()
+            : undefined,
+        action:
+          "Add credits in OpenRouter to increase your available requests.",
+      },
+    };
+  }
+
+  return {
+    type: "error",
+    error: {
+      code: "AI_ERROR",
+      title: "Unable to complete your request",
+      message:
+        "Queryline couldn't get a response from the AI service. Please try again.",
+    },
+  };
+}
+
 export async function POST(request: Request) {
   try {
     const body: unknown = await request.json();
@@ -56,20 +105,6 @@ export async function POST(request: Request) {
     const adapter = createDatabaseQueryAdapter(connection);
     const agent = createDatabaseAgent(adapter, connection.type);
 
-    const stream = await agent.stream(
-      {
-        messages: [
-          {
-            role: "user",
-            content: message,
-          },
-        ],
-      },
-      {
-        streamMode: ["messages", "updates"],
-      },
-    );
-
     const encoder = new TextEncoder();
 
     const readableStream = new ReadableStream({
@@ -81,6 +116,20 @@ export async function POST(request: Request) {
         };
 
         try {
+          const stream = await agent.stream(
+            {
+              messages: [
+                {
+                  role: "user",
+                  content: message,
+                },
+              ],
+            },
+            {
+              streamMode: ["messages", "updates"],
+            },
+          );
+
           for await (const [mode, chunk] of stream as AsyncIterable<
             [string, unknown]
           >) {
@@ -102,7 +151,10 @@ export async function POST(request: Request) {
               const content = extractText(token.content);
 
               if (content) {
-                sendEvent({ type: "token", content });
+                sendEvent({
+                  type: "token",
+                  content,
+                });
               }
             }
 
@@ -122,21 +174,15 @@ export async function POST(request: Request) {
             sendEvent({
               type: "done",
             });
-
-            controller.close();
           }
         } catch (error) {
-          if (!request.signal.aborted) {
-            sendEvent({
-              type: "error",
-              message:
-                error instanceof Error
-                  ? error.message
-                  : "An unexpected streaming error occurred.",
-            });
+          console.error("Queryline AI streaming error:", error);
 
-            controller.close();
+          if (!request.signal.aborted) {
+            sendEvent(createErrorEvent(error));
           }
+        } finally {
+          controller.close();
         }
       },
     });
@@ -150,17 +196,14 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
-    console.error("Queryline AI streaming error:", error);
+    console.error("Queryline AI request error:", error);
 
     return NextResponse.json(
       {
         success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "An unexpected AI query error occurred.",
+        message: "Unable to initialize the database query request.",
       },
       { status: 500 },
     );
   }
-}
+};

@@ -16,10 +16,19 @@ export interface ChatMessage {
   createdAt: Date;
   status?: string;
   queryExecutions?: ChatQueryExecution[];
+  error?: ChatError;
 };
 
 export interface Conversation {
   id: string;
   title: string;
   updatedAt: Date;
+};
+
+export interface ChatError {
+  code: "RATE_LIMITED" | "AI_ERROR";
+  title: string;
+  message: string;
+  retryAt?: string;
+  action?: string;
 };
