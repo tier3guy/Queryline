@@ -39,28 +39,52 @@ const features = [
 
 export default function Features() {
   return (
-    <section id="features" className="px-6 py-28 md:px-12 md:py-36">
-      <div className="mx-auto max-w-[1100px]">
-        <div className="mb-14 max-w-[600px]">
-          <p className="mb-5 text-[11px] font-semibold uppercase tracking-[2px] text-[#f36b3f]">
-            What makes Queryline different
-          </p>
+    <section
+      id="features"
+      className="border-b border-neutral-200 bg-[#fafafa] px-6 py-24 md:px-12 md:py-32"
+    >
+      <div className="mx-auto max-w-[1440px]">
+        <div className="grid gap-12 border-neutral-200 px-6 md:grid-cols-[1fr_1fr] md:gap-16 md:px-12">
+          <div className="max-w-[600px]">
+            <motion.p
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.4 }}
+              className="mb-6 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[1.5px] text-neutral-500"
+            >
+              <span className="size-2 bg-[#f36b3f]" />
+              What makes Queryline different
+            </motion.p>
 
-          <h2 className="text-4xl font-semibold leading-tight tracking-[-2px] md:text-6xl">
-            Less querying.
-            <br />
-            <span className="font-serif font-normal italic text-neutral-400">
-              More discovering.
-            </span>
-          </h2>
+            <motion.h2
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.05 }}
+              className="text-4xl font-semibold leading-[1.08] tracking-[-2px] text-neutral-950 md:text-6xl md:tracking-[-3px]"
+            >
+              Less querying.
+              <br />
+              <span className="text-neutral-400">More discovering.</span>
+            </motion.h2>
+          </div>
 
-          <p className="mt-5 max-w-[470px] text-sm leading-7 text-neutral-500">
-            Everything you need to understand and work with your databases,
-            without getting lost in the complexity.
-          </p>
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="flex items-end"
+          >
+            <p className="max-w-[470px] border-l border-neutral-300 pl-5 text-sm leading-7 text-neutral-500">
+              Everything you need to understand and work with your databases,
+              without getting lost in the complexity.
+            </p>
+          </motion.div>
         </div>
 
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="mt-16 grid border-l border-t border-neutral-200 md:grid-cols-3">
           {features.map((feature, index) => (
             <motion.article
               key={feature.number}
@@ -68,20 +92,20 @@ export default function Features() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, amount: 0.2 }}
               transition={{ duration: 0.45, delay: index * 0.08 }}
-              className={`group min-h-[250px] rounded-xl border border-black/[0.08] bg-white p-7 transition-colors hover:border-[#f36b3f]/40 ${feature.className}`}
+              className={`group relative flex min-h-[260px] flex-col justify-between border-b border-r border-neutral-200 bg-white p-6 transition-colors duration-200 hover:bg-neutral-50 md:p-8 ${feature.className}`}
             >
               <div className="flex items-start justify-between">
-                <span className="text-[11px] font-medium tracking-wider text-neutral-400">
-                  {feature.number}
+                <span className="font-mono text-[11px] text-neutral-400">
+                  / {feature.number}
                 </span>
 
-                <span className="flex size-11 items-center justify-center rounded-lg bg-[#faf3ef] font-mono text-sm text-[#f36b3f] transition-colors group-hover:bg-[#f36b3f] group-hover:text-white">
+                <span className="flex size-10 items-center justify-center border border-neutral-200 font-mono text-sm text-neutral-500 transition-colors duration-200 group-hover:border-[#f36b3f] group-hover:bg-[#f36b3f] group-hover:text-white">
                   {feature.symbol}
                 </span>
               </div>
 
-              <div className="mt-12">
-                <h3 className="text-xl font-semibold tracking-tight">
+              <div className="mt-16">
+                <h3 className="text-xl font-semibold tracking-[-0.5px] text-neutral-950">
                   {feature.title}
                 </h3>
 
@@ -89,6 +113,8 @@ export default function Features() {
                   {feature.description}
                 </p>
               </div>
+
+              <span className="absolute bottom-0 left-0 h-[2px] w-0 bg-[#f36b3f] transition-all duration-300 group-hover:w-full" />
             </motion.article>
           ))}
         </div>
