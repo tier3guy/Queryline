@@ -270,7 +270,7 @@ export default function Sidebar({
         </div>
 
         <div className="shrink-0 p-3">
-          <button
+          {/* <button
             type="button"
             onClick={() => setSettingsOpen(true)}
             className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-neutral-50 border-t border-neutral-200 pt-5"
@@ -287,7 +287,7 @@ export default function Sidebar({
             </span>
 
             <span className="text-neutral-400">→</span>
-          </button>
+          </button> */}
 
           <div className="mt-2 border-t border-neutral-200 pt-3">
             <div className="flex items-center gap-3 px-3 py-2">
