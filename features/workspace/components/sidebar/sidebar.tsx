@@ -1,6 +1,9 @@
 "use client";
 
+import { useState } from "react";
+import Icon from "@/components/icons";
 import Logo from "@/components/shared/logo/logo";
+import SettingsModal from "@/features/workspace/components/settings";
 import type { SavedDatabaseConnection, WorkspaceConversation } from "@/features/workspace/types";
 
 interface SidebarProps {
@@ -17,7 +20,7 @@ interface SidebarProps {
   onDeleteConnection: (connectionId: string) => void;
   onDeleteConversation: (conversationId: string) => void;
   onClearHistory: () => void;
-};
+}
 
 const databaseLabels: Record<string, string> = {
   postgresql: "PostgreSQL",
@@ -51,6 +54,8 @@ export default function Sidebar({
   onDeleteConnection,
   onDeleteConversation,
 }: SidebarProps) {
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
   const handleDeleteConnection = (connectionId: string, name: string) => {
     if (
       window.confirm(
@@ -61,14 +66,9 @@ export default function Sidebar({
     }
   };
 
-  const handleDeleteConversation = (
-    conversationId: string,
-    title: string,
-  ) => {
+  const handleDeleteConversation = (conversationId: string, title: string) => {
     if (
-      window.confirm(
-        `Delete conversation "${title}"? This cannot be undone.`,
-      )
+      window.confirm(`Delete conversation "${title}"? This cannot be undone.`)
     ) {
       onDeleteConversation(conversationId);
     }
@@ -269,26 +269,49 @@ export default function Sidebar({
           </section>
         </div>
 
-        <div className="shrink-0 border-t border-neutral-200 p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex size-9 shrink-0 items-center justify-center border border-neutral-200 bg-neutral-100 text-xs font-semibold text-neutral-700">
-              G
+        <div className="shrink-0 p-3">
+          <button
+            type="button"
+            onClick={() => setSettingsOpen(true)}
+            className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-neutral-50 border-t border-neutral-200 pt-5"
+          >
+            <Icon name="settings" size={18} color="#737373" />
+
+            <span className="min-w-0 flex-1">
+              <span className="block text-[12px] font-medium text-neutral-800">
+                Settings
+              </span>
+              <span className="mt-0.5 block text-[10px] text-neutral-400">
+                Query execution permissions
+              </span>
+            </span>
+
+            <span className="text-neutral-400">→</span>
+          </button>
+
+          <div className="mt-2 border-t border-neutral-200 pt-3">
+            <div className="flex items-center gap-3 px-3 py-2">
+              <div className="flex size-9 shrink-0 items-center justify-center border border-neutral-200 bg-neutral-100 text-xs font-semibold text-neutral-700">
+                G
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[12px] font-semibold text-neutral-900">
+                  Guest User
+                </p>
+
+                <p className="mt-0.5 text-[10px] uppercase tracking-[0.12em] text-neutral-400">
+                  Local Session
+                </p>
+              </div>
+
+              <span className="size-1.5 bg-[#f36b3f]" />
             </div>
-
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-[12px] font-semibold text-neutral-900">
-                Guest User
-              </p>
-
-              <p className="mt-0.5 text-[10px] uppercase tracking-[0.12em] text-neutral-400">
-                Local Session
-              </p>
-            </div>
-
-            <span className="size-1.5 bg-[#f36b3f]" />
           </div>
         </div>
       </aside>
+
+      {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
     </>
   );
-};
+}

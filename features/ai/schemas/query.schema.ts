@@ -36,9 +36,15 @@ const connectionSchema = z.discriminatedUnion("type", [
   }),
 ]);
 
+const openRouterSchema = z.object({
+  apiKey: z.string().trim().max(500).optional(),
+  model: z.string().trim().max(200).optional(),
+}).optional();
+
 export const databaseQuerySchema = z.object({
   message: z.string().trim().min(1).max(10000),
   connection: connectionSchema,
+  openRouter: openRouterSchema,
 });
 
 export type DatabaseQueryInput = z.infer<typeof databaseQuerySchema>;

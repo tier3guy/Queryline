@@ -8,7 +8,17 @@ import Composer from "@/features/workspace/components/composer/composer";
 import WorkspaceHeader from "@/features/workspace/components/header/header";
 import { useWorkspaceStorage } from "@/features/workspace/hooks/use-workspace-storage";
 import ConnectDatabaseForm from "@/features/workspace/components/connect-database/connect-database-form";
-import type { ChatError, ChatMessage, SavedDatabaseConnection, WorkspaceConversation } from "@/features/workspace/types";
+import type {
+  ChatError,
+  ChatMessage,
+  SavedDatabaseConnection,
+  WorkspaceConversation,
+} from "@/features/workspace/types";
+
+interface OpenRouterSettings {
+  apiKey: string;
+  model: string;
+}
 
 export default function WorkspacePage() {
   const { workspace, setWorkspace, isLoaded } = useWorkspaceStorage();
@@ -124,6 +134,22 @@ export default function WorkspacePage() {
     setIsSending(true);
 
     try {
+      const storedSettings = localStorage.getItem(
+        "queryline:openrouter-settings",
+      );
+
+      let openRouterSettings: OpenRouterSettings | null = null;
+
+      if (storedSettings) {
+        try {
+          openRouterSettings = JSON.parse(storedSettings) as OpenRouterSettings;
+        } catch {
+          throw new Error(
+            "Invalid OpenRouter settings. Please update your settings.",
+          );
+        }
+      }
+
       const response = await fetch("/api/ai/query", {
         method: "POST",
         headers: {
@@ -132,6 +158,15 @@ export default function WorkspacePage() {
         body: JSON.stringify({
           message: messageContent,
           connection: activeConnection.config,
+          ...(openRouterSettings?.apiKey?.trim() &&
+          openRouterSettings?.model?.trim()
+            ? {
+                openRouter: {
+                  apiKey: openRouterSettings.apiKey.trim(),
+                  model: openRouterSettings.model.trim(),
+                },
+              }
+            : {}),
         }),
       });
 
@@ -472,9 +507,8 @@ export default function WorkspacePage() {
                     Database connection unavailable
                   </p>
                   <p className="mt-1 text-xs leading-5 text-neutral-500">
-                    This conversation is preserved, but its database
-                    connection is no longer available. Reconnect your database
-                    to continue.
+                    This conversation is preserved, but its database connection
+                    is no longer available. Reconnect your database to continue.
                   </p>
                 </div>
 
@@ -702,4 +736,4 @@ export default function WorkspacePage() {
       )}
     </main>
   );
-};
+}

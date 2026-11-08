@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-
 import { databaseQuerySchema } from "@/features/ai/schemas/query.schema";
 import { createDatabaseQueryAdapter } from "@/lib/database/query-adapters";
 import { createDatabaseAgent } from "@/features/ai/services/database-agent";
@@ -59,13 +58,12 @@ function createErrorEvent(error: unknown) {
         code: "RATE_LIMITED",
         title: "AI request limit reached",
         message:
-          "The free AI model has reached its daily request limit. You can wait for the quota to reset or add credits to your OpenRouter account.",
+          "Your OpenRouter account has reached its available request limit. Check your account credits or try again later.",
         retryAt:
           Number.isFinite(resetTimestamp) && resetTimestamp > 0
             ? new Date(resetTimestamp).toISOString()
             : undefined,
-        action:
-          "Add credits in OpenRouter to increase your available requests.",
+        action: "Check your OpenRouter account and available credits.",
       },
     };
   }
@@ -76,7 +74,7 @@ function createErrorEvent(error: unknown) {
       code: "AI_ERROR",
       title: "Unable to complete your request",
       message:
-        "Queryline couldn't get a response from the AI service. Please try again.",
+        "Queryline couldn't get a response from the AI service. Check your OpenRouter settings and try again.",
     },
   };
 }
@@ -87,25 +85,24 @@ export async function POST(request: Request) {
     const validation = databaseQuerySchema.safeParse(body);
 
     if (!validation.success) {
-      console.error(
-        "Queryline request validation failed:",
-        validation.error.flatten(),
-      );
-
       return NextResponse.json(
         {
           success: false,
-          message: "Invalid request.",
+          message: "Invalid request. Check your message, database connection, and OpenRouter settings.",
           errors: validation.error.flatten(),
         },
         { status: 400 },
       );
     }
 
-    const { message, connection } = validation.data;
+    const { message, connection, openRouter } = validation.data;
 
     const adapter = createDatabaseQueryAdapter(connection);
-    const agent = createDatabaseAgent(adapter, connection.type);
+    const agent = createDatabaseAgent(
+      adapter,
+      connection.type,
+      openRouter,
+    );
 
     const encoder = new TextEncoder();
 
@@ -178,8 +175,6 @@ export async function POST(request: Request) {
             });
           }
         } catch (error) {
-          console.error("Queryline AI streaming error:", error);
-
           if (!request.signal.aborted) {
             sendEvent(createErrorEvent(error));
           }
@@ -197,9 +192,7 @@ export async function POST(request: Request) {
         "X-Accel-Buffering": "no",
       },
     });
-  } catch (error) {
-    console.error("Queryline AI request error:", error);
-
+  } catch {
     return NextResponse.json(
       {
         success: false,

@@ -1,9 +1,9 @@
 import { createAgent } from "langchain";
-
-import { createDatabaseTools } from "@/features/ai/tools/database.tools";
 import { createChatModel } from "@/lib/ai/model";
-import type { DatabaseQueryAdapter } from "@/lib/database/query-types";
+import type { OpenRouterConfig } from "@/lib/ai/model";
 import type { DatabaseType } from "@/lib/database/types";
+import type { DatabaseQueryAdapter } from "@/lib/database/query-types";
+import { createDatabaseTools } from "@/features/ai/tools/database.tools";
 
 const SYSTEM_PROMPT = `
 You are Queryline AI, an expert database assistant.
@@ -54,11 +54,12 @@ The connected database type is: {DATABASE_TYPE}.
 export function createDatabaseAgent(
   adapter: DatabaseQueryAdapter,
   databaseType: DatabaseType,
+  openRouter?: OpenRouterConfig,
 ) {
   const tools = createDatabaseTools(adapter);
 
   return createAgent({
-    model: createChatModel(),
+    model: createChatModel(openRouter),
     tools,
     systemPrompt: SYSTEM_PROMPT.replace("{DATABASE_TYPE}", databaseType),
   });
