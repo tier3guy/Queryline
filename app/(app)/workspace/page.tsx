@@ -1,21 +1,14 @@
 "use client";
 
 import { useState } from "react";
-
-import type { DatabaseConnectionConfig } from "@/lib/database/types";
-import type {
-  ChatError,
-  ChatMessage,
-  SavedDatabaseConnection,
-  WorkspaceConversation,
-} from "@/features/workspace/types";
-
 import Chat from "@/features/workspace/components/chat/chat";
-import Composer from "@/features/workspace/components/composer/composer";
-import ConnectDatabaseForm from "@/features/workspace/components/connect-database/connect-database-form";
+import type { DatabaseConnectionConfig } from "@/lib/database/types";
 import Sidebar from "@/features/workspace/components/sidebar/sidebar";
+import Composer from "@/features/workspace/components/composer/composer";
 import WorkspaceHeader from "@/features/workspace/components/header/header";
 import { useWorkspaceStorage } from "@/features/workspace/hooks/use-workspace-storage";
+import ConnectDatabaseForm from "@/features/workspace/components/connect-database/connect-database-form";
+import type { ChatError, ChatMessage, SavedDatabaseConnection, WorkspaceConversation } from "@/features/workspace/types";
 
 export default function WorkspacePage() {
   const { workspace, setWorkspace, isLoaded } = useWorkspaceStorage();
@@ -408,14 +401,19 @@ export default function WorkspacePage() {
 
   if (!isLoaded) {
     return (
-      <main className="flex h-dvh items-center justify-center bg-background text-sm text-muted-foreground">
-        Loading workspace...
+      <main className="flex h-dvh items-center justify-center bg-[#fafafa]">
+        <div className="flex items-center gap-3 border border-neutral-200 bg-white px-5 py-4">
+          <span className="size-2 animate-pulse bg-[#f36b3f]" />
+          <span className="text-xs font-medium uppercase tracking-[1.2px] text-neutral-500">
+            Loading workspace
+          </span>
+        </div>
       </main>
     );
   }
 
   return (
-    <main className="flex h-dvh overflow-hidden bg-background text-foreground">
+    <main className="flex h-dvh overflow-hidden bg-[#fafafa] text-neutral-950">
       <Sidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
@@ -432,7 +430,7 @@ export default function WorkspacePage() {
         onClearHistory={handleClearHistory}
       />
 
-      <section className="flex min-w-0 flex-1 flex-col">
+      <section className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <WorkspaceHeader
           onMenuClick={() => setSidebarOpen(true)}
           onConnectClick={handleOpenNewConnection}
@@ -455,30 +453,110 @@ export default function WorkspacePage() {
 
             <Composer onSend={handleSendMessage} disabled={isSending} />
           </>
+        ) : activeConversation && messages.length > 0 ? (
+          <>
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+              <Chat
+                messages={messages}
+                isLoading={false}
+                activeAssistantId={null}
+                onSuggestionClick={handleSendMessage}
+              />
+            </div>
+
+            <div className="border-t border-neutral-200 bg-white px-6 py-4">
+              <div className="mx-auto flex max-w-3xl items-start gap-3">
+                <span className="mt-0.5 size-2 shrink-0 bg-amber-500" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold text-neutral-900">
+                    Database connection unavailable
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-neutral-500">
+                    This conversation is preserved, but its database
+                    connection is no longer available. Reconnect your database
+                    to continue.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleOpenNewConnection}
+                  className="shrink-0 border border-neutral-300 px-3 py-2 text-xs font-medium transition-colors hover:border-neutral-950 hover:bg-neutral-50"
+                >
+                  Reconnect
+                </button>
+              </div>
+            </div>
+          </>
         ) : (
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-            <Chat
-              messages={messages}
-              isLoading={isSending}
-              activeAssistantId={activeAssistantId}
-              onSuggestionClick={handleSendMessage}
-            />
+            <div className="mx-auto flex w-full max-w-[1100px] flex-1 flex-col px-6 pb-16 pt-16 sm:px-10 md:pt-24">
+              <div className="max-w-[680px]">
+                <div className="mb-8 flex items-center gap-3">
+                  <span className="size-2 bg-[#f36b3f]" />
+                  <p className="text-[11px] font-semibold uppercase tracking-[1.5px] text-neutral-500">
+                    Welcome to Queryline
+                  </p>
+                </div>
 
-            <div className="border h-100 mx-[19.5%] mb-20 rounded-2xl flex flex-col gap-1 justify-center items-center border-border bg-muted/20 p-6 text-center text-sm text-muted-foreground">
-              <h3 className="text-black font-medium">
-                Please connect to you database to start a new chat.
-              </h3>
-              <p>
-                No database connection selected. Please connect to a database to
-                start a new chat.
-              </p>
-              <button
-                type="button"
-                onClick={handleOpenNewConnection}
-                className="mt-6 rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-background transition-opacity hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                Connect Database
-              </button>
+                <h1 className="text-4xl font-semibold leading-[1.08] tracking-[-2px] text-neutral-950 sm:text-5xl md:text-6xl md:tracking-[-3px]">
+                  Your database,
+                  <br />
+                  <span className="text-neutral-400">understood.</span>
+                </h1>
+
+                <p className="mt-6 max-w-[480px] text-sm leading-7 text-neutral-500">
+                  Connect a database to get started. Ask questions in natural
+                  language, explore your schema, and understand your data
+                  without writing SQL manually.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={handleOpenNewConnection}
+                  className="group mt-9 inline-flex h-11 items-center gap-5 border border-neutral-950 bg-neutral-950 px-5 text-sm font-medium text-white transition-colors hover:border-[#f36b3f] hover:bg-[#f36b3f]"
+                >
+                  Connect database
+                  <span className="transition-transform group-hover:translate-x-1">
+                    →
+                  </span>
+                </button>
+              </div>
+
+              <div className="mt-auto grid border-l border-t border-neutral-200 pt-0 sm:grid-cols-3">
+                {[
+                  {
+                    number: "01",
+                    title: "Connect",
+                    description: "Connect your existing database.",
+                  },
+                  {
+                    number: "02",
+                    title: "Ask",
+                    description: "Describe what you want to know.",
+                  },
+                  {
+                    number: "03",
+                    title: "Explore",
+                    description: "Inspect queries and results.",
+                  },
+                ].map((item) => (
+                  <div
+                    key={item.number}
+                    className="border-b border-r border-neutral-200 bg-white p-5"
+                  >
+                    <span className="font-mono text-[10px] text-neutral-400">
+                      / {item.number}
+                    </span>
+                    <h3 className="mt-5 text-sm font-semibold text-neutral-900">
+                      {item.title}
+                    </h3>
+                    <p className="mt-2 text-xs leading-5 text-neutral-500">
+                      {item.description}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}
@@ -495,7 +573,7 @@ export default function WorkspacePage() {
 
       {newChatDialogOpen && (
         <div
-          className="fixed inset-0 z-[110] flex items-center justify-center bg-black/40 p-4 backdrop-blur-[3px]"
+          className="fixed inset-0 z-[110] flex items-center justify-center bg-neutral-950/50 p-4"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) {
               setNewChatDialogOpen(false);
@@ -506,34 +584,51 @@ export default function WorkspacePage() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="new-chat-title"
-            className="w-full max-w-md rounded-2xl border border-border bg-background shadow-2xl"
+            className="w-full max-w-md border border-neutral-300 bg-white shadow-2xl"
           >
-            <div className="border-b border-border px-6 py-5">
-              <h2
-                id="new-chat-title"
-                className="text-lg font-semibold tracking-tight"
-              >
-                Start a new chat
-              </h2>
+            <div className="flex items-start justify-between border-b border-neutral-200 px-6 py-5">
+              <div>
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-[1.3px] text-[#f36b3f]">
+                  Workspace
+                </p>
+                <h2
+                  id="new-chat-title"
+                  className="text-lg font-semibold tracking-tight text-neutral-950"
+                >
+                  Start a new chat
+                </h2>
+                <p className="mt-1 text-xs leading-5 text-neutral-500">
+                  Choose the database you want to work with.
+                </p>
+              </div>
 
-              <p className="mt-1 text-sm text-muted-foreground">
-                Choose the database you want to work with.
-              </p>
+              <button
+                type="button"
+                onClick={() => setNewChatDialogOpen(false)}
+                aria-label="Close dialog"
+                className="flex size-8 items-center justify-center border border-neutral-200 text-neutral-500 transition-colors hover:border-neutral-950 hover:text-neutral-950"
+              >
+                ×
+              </button>
             </div>
 
             <div className="space-y-2 px-6 py-5">
+              <p className="mb-3 text-[10px] font-semibold uppercase tracking-[1.2px] text-neutral-400">
+                Available connections ({workspace.connections.length})
+              </p>
+
               {workspace.connections.map((connection) => (
                 <button
                   key={connection.id}
                   type="button"
                   onClick={() => setSelectedConnectionId(connection.id)}
-                  className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors ${
+                  className={`flex w-full items-center gap-3 border p-3 text-left transition-colors ${
                     selectedConnectionId === connection.id
-                      ? "border-foreground bg-muted"
-                      : "border-border hover:bg-muted/50"
+                      ? "border-neutral-950 bg-neutral-50"
+                      : "border-neutral-200 hover:border-neutral-400"
                   }`}
                 >
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-xs font-semibold">
+                  <span className="flex size-9 shrink-0 items-center justify-center border border-neutral-200 bg-white font-mono text-[10px] font-semibold text-neutral-700">
                     {connection.config.type === "postgresql"
                       ? "PG"
                       : connection.config.type === "mysql"
@@ -548,47 +643,63 @@ export default function WorkspacePage() {
                   </span>
 
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium">
+                    <span className="block truncate text-sm font-medium text-neutral-900">
                       {connection.config.name}
                     </span>
-
-                    <span className="block text-xs text-muted-foreground">
+                    <span className="mt-1 block text-[10px] uppercase tracking-[0.8px] text-neutral-400">
                       {connection.config.type}
                     </span>
                   </span>
 
                   <span
-                    className={`size-4 rounded-full border ${
+                    className={`flex size-4 shrink-0 items-center justify-center border ${
                       selectedConnectionId === connection.id
-                        ? "border-4 border-foreground"
-                        : "border-border"
+                        ? "border-neutral-950"
+                        : "border-neutral-300"
                     }`}
-                  />
+                  >
+                    {selectedConnectionId === connection.id && (
+                      <span className="size-2 bg-[#f36b3f]" />
+                    )}
+                  </span>
                 </button>
               ))}
             </div>
 
-            <div className="flex justify-end gap-3 border-t border-border bg-muted/20 px-6 py-4">
+            <div className="flex justify-between border-t border-neutral-200 bg-neutral-50 px-6 py-4">
               <button
                 type="button"
-                onClick={() => setNewChatDialogOpen(false)}
-                className="rounded-lg border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-muted"
+                onClick={() => {
+                  setNewChatDialogOpen(false);
+                  handleOpenNewConnection();
+                }}
+                className="text-xs font-medium text-neutral-500 transition-colors hover:text-neutral-950"
               >
-                Cancel
+                + Add connection
               </button>
 
-              <button
-                type="button"
-                onClick={handleStartChat}
-                disabled={!selectedConnectionId}
-                className="rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-background transition-opacity hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                Start Chat
-              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setNewChatDialogOpen(false)}
+                  className="h-9 border border-neutral-300 bg-white px-4 text-xs font-medium text-neutral-700 transition-colors hover:border-neutral-950"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleStartChat}
+                  disabled={!selectedConnectionId}
+                  className="h-9 border border-neutral-950 bg-neutral-950 px-4 text-xs font-medium text-white transition-colors hover:border-[#f36b3f] hover:bg-[#f36b3f] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Start chat
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
     </main>
   );
-}
+};

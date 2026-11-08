@@ -1,4 +1,3 @@
-
 "use client";
 
 interface WorkspaceHeaderProps {
@@ -28,58 +27,86 @@ export default function WorkspaceHeader({
       ? connectionType ?? "Database connection"
       : "Your AI database workspace";
 
+  const statusLabel = isConnected
+    ? "Connected"
+    : connectionName
+      ? "Connection unavailable"
+      : "No database connected";
+
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between border-b border-border px-4 sm:px-6">
+    <header className="flex h-16 shrink-0 items-center justify-between border-b border-neutral-200 bg-white px-4 sm:px-6">
       <div className="flex min-w-0 items-center gap-3">
         <button
           type="button"
           onClick={onMenuClick}
-          className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted lg:hidden"
+          className="flex size-9 shrink-0 items-center justify-center border border-neutral-200 text-neutral-600 transition-colors hover:border-neutral-400 hover:bg-neutral-50 lg:hidden"
           aria-label="Open sidebar"
         >
-          <span className="text-xl">☰</span>
+          <svg
+            viewBox="0 0 20 20"
+            fill="none"
+            className="size-4"
+            aria-hidden="true"
+          >
+            <path
+              d="M3 5H17M3 10H17M3 15H17"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="square"
+            />
+          </svg>
         </button>
 
         <div className="min-w-0">
-          <p className="truncate text-sm font-medium">
-            {title}
-          </p>
+          <div className="flex min-w-0 items-center gap-2">
+            <p className="truncate text-[13px] font-semibold tracking-tight text-neutral-950">
+              {title}
+            </p>
 
-          <p className="truncate text-xs text-muted-foreground">
+            {conversationTitle && (
+              <span className="hidden shrink-0 border border-neutral-200 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-neutral-400 sm:inline-flex">
+                Chat
+              </span>
+            )}
+          </div>
+
+          <p className="mt-0.5 truncate text-[11px] text-neutral-400">
             {subtitle}
           </p>
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center gap-3">
-        <div className="hidden items-center gap-2 rounded-lg border border-border px-3 py-2 sm:flex">
+      <div className="ml-3 flex shrink-0 items-center gap-3">
+        <div className="hidden items-center gap-2 border-r border-neutral-200 pr-4 sm:flex">
           <span
-            className={`size-1.5 rounded-full ${
-              isConnected
-                ? "bg-emerald-500"
-                : "bg-muted-foreground/50"
+            className={`size-1.5 ${
+              isConnected ? "bg-[#f36b3f]" : "bg-neutral-300"
             }`}
           />
 
-          <span className="text-xs text-muted-foreground">
-            {isConnected
-              ? "Connected"
-              : connectionName
-                ? "Connection unavailable"
-                : "No database connected"}
+          <span
+            className={`text-[11px] ${
+              isConnected ? "text-neutral-700" : "text-neutral-400"
+            }`}
+          >
+            {statusLabel}
           </span>
         </div>
 
         <button
           type="button"
           onClick={onConnectClick}
-          className="rounded-lg bg-foreground px-3.5 py-2 text-xs font-medium text-background transition-opacity hover:opacity-85 sm:text-sm"
+          className="flex items-center gap-2 bg-neutral-950 px-3 py-2.5 text-[11px] font-medium text-white transition-colors hover:bg-[#f36b3f] sm:px-4 sm:text-xs"
         >
-          {isConnected || connectionName
-            ? "Add connection"
-            : "Connect database"}
+          <span className="text-base leading-none">+</span>
+
+          <span>
+            {isConnected || connectionName
+              ? "Add connection"
+              : "Connect database"}
+          </span>
         </button>
       </div>
     </header>
   );
-}
+};

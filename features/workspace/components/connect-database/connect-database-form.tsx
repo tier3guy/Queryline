@@ -6,11 +6,7 @@ import type { FormEvent } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { testConnection } from "@/features/connections/services/connection-api";
-import type {
-  ConnectionTestResult,
-  DatabaseConnectionConfig,
-  DatabaseType,
-} from "@/lib/database/types";
+import type { DatabaseType, ConnectionTestResult, DatabaseConnectionConfig } from "@/lib/database/types";
 
 interface ConnectDatabaseFormProps {
   onClose: () => void;
@@ -116,6 +112,7 @@ export default function ConnectDatabaseForm({
       ssl: initialConfig.ssl,
     };
   });
+
   const [showPassword, setShowPassword] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<ConnectionTestResult | null>(
@@ -132,15 +129,15 @@ export default function ConnectDatabaseForm({
 
   const isFormValid = Boolean(
     form.name.trim() &&
-    (isSQLite
-      ? form.filePath.trim()
-      : form.host.trim() &&
-        form.database.trim() &&
-        form.username.trim() &&
-        form.password &&
-        Number.isInteger(Number(form.port)) &&
-        Number(form.port) >= 1 &&
-        Number(form.port) <= 65535),
+      (isSQLite
+        ? form.filePath.trim()
+        : form.host.trim() &&
+          form.database.trim() &&
+          form.username.trim() &&
+          form.password &&
+          Number.isInteger(Number(form.port)) &&
+          Number(form.port) >= 1 &&
+          Number(form.port) <= 65535),
   );
 
   const invalidateTest = () => {
@@ -166,6 +163,7 @@ export default function ConnectDatabaseForm({
     );
 
     setDatabaseType(type);
+
     setForm((previous) => ({
       ...previous,
       port: selected?.defaultPort ?? "",
@@ -266,9 +264,9 @@ export default function ConnectDatabaseForm({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4 backdrop-blur-[3px]"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-neutral-950/50 p-4 backdrop-blur-[2px]"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) {
+        if (event.target === event.currentTarget && !isTesting) {
           onClose();
         }
       }}
@@ -277,36 +275,55 @@ export default function ConnectDatabaseForm({
         role="dialog"
         aria-modal="true"
         aria-labelledby="connect-database-title"
-        className="flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl"
+        className="flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden border border-neutral-200 bg-white shadow-2xl"
       >
-        <div className="flex items-start justify-between border-b border-border px-6 py-5">
+        <div className="flex items-start justify-between border-b border-neutral-200 px-6 py-5">
           <div>
+            <div className="mb-2 flex items-center gap-2">
+              <span className="size-1.5 bg-[#f36b3f]" />
+              <span className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-neutral-500">
+                Workspace / Connections
+              </span>
+            </div>
+
             <h2
               id="connect-database-title"
-              className="text-lg font-semibold tracking-tight"
+              className="text-lg font-semibold tracking-tight text-neutral-950"
             >
-              Connect a database
+              {initialConfig ? "Edit connection" : "Connect a database"}
             </h2>
 
-            <p className="mt-1 text-sm text-muted-foreground">
-              Add a database connection to your workspace.
+            <p className="mt-1 text-sm text-neutral-500">
+              Configure your database connection details.
             </p>
           </div>
 
           <button
             type="button"
             onClick={onClose}
+            disabled={isTesting}
             aria-label="Close dialog"
-            className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="flex size-8 items-center justify-center border border-neutral-200 text-neutral-500 transition-colors hover:border-neutral-950 hover:text-neutral-950 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <span className="text-xl leading-none">×</span>
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
-          <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5">
-            <div className="space-y-2">
-              <Label htmlFor="database-type">Database type</Label>
+          <div className="flex-1 space-y-6 overflow-y-auto px-6 py-5">
+            <section className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label
+                  htmlFor="database-type"
+                  className="text-xs font-semibold uppercase tracking-wide text-neutral-700"
+                >
+                  Database type
+                </Label>
+
+                <span className="font-mono text-[10px] text-neutral-400">
+                  STEP 01
+                </span>
+              </div>
 
               <select
                 id="database-type"
@@ -315,7 +332,7 @@ export default function ConnectDatabaseForm({
                 onChange={(event) =>
                   handleDatabaseTypeChange(event.target.value as DatabaseType)
                 }
-                className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20"
+                className="h-10 w-full appearance-none border border-neutral-200 bg-white px-3 text-sm text-neutral-900 outline-none transition-colors focus:border-[#f36b3f] disabled:cursor-not-allowed disabled:bg-neutral-50"
               >
                 {databaseOptions.map((database) => (
                   <option key={database.value} value={database.value}>
@@ -324,26 +341,54 @@ export default function ConnectDatabaseForm({
                 ))}
               </select>
 
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-neutral-500">
                 {selectedDatabase?.description}
               </p>
-            </div>
+            </section>
 
-            <div className="space-y-2">
-              <Label htmlFor="connection-name">Connection name</Label>
-              <Input
-                id="connection-name"
-                placeholder="e.g. Production Database"
-                value={form.name}
-                disabled={isTesting}
-                onChange={(event) => updateField("name", event.target.value)}
-                required
-              />
-            </div>
+            <section className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label
+                  htmlFor="connection-name"
+                  className="text-xs font-semibold uppercase tracking-wide text-neutral-700"
+                >
+                  Connection details
+                </Label>
+
+                <span className="font-mono text-[10px] text-neutral-400">
+                  STEP 02
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                <Label
+                  htmlFor="connection-name"
+                  className="text-xs text-neutral-600"
+                >
+                  Connection name
+                </Label>
+
+                <Input
+                  id="connection-name"
+                  placeholder="e.g. Production Database"
+                  value={form.name}
+                  disabled={isTesting}
+                  onChange={(event) => updateField("name", event.target.value)}
+                  className="h-10 rounded-none border-neutral-200 bg-white text-sm shadow-none placeholder:text-neutral-400 focus-visible:border-[#f36b3f] focus-visible:ring-0"
+                  required
+                />
+              </div>
+            </section>
 
             {isSQLite ? (
-              <div className="space-y-2">
-                <Label htmlFor="sqlite-file-path">Database file path</Label>
+              <section className="space-y-2">
+                <Label
+                  htmlFor="sqlite-file-path"
+                  className="text-xs text-neutral-600"
+                >
+                  Database file path
+                </Label>
+
                 <Input
                   id="sqlite-file-path"
                   placeholder="/path/to/database.sqlite"
@@ -352,17 +397,35 @@ export default function ConnectDatabaseForm({
                   onChange={(event) =>
                     updateField("filePath", event.target.value)
                   }
+                  className="h-10 rounded-none border-neutral-200 bg-white text-sm shadow-none placeholder:text-neutral-400 focus-visible:border-[#f36b3f] focus-visible:ring-0"
                   required
                 />
-                <p className="text-xs text-muted-foreground">
+
+                <p className="text-xs leading-relaxed text-neutral-500">
                   Enter the path accessible to the Queryline server.
                 </p>
-              </div>
+              </section>
             ) : (
-              <>
-                <div className="grid grid-cols-[1fr_120px] gap-3">
+              <section className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-neutral-700">
+                    Network configuration
+                  </span>
+
+                  <span className="font-mono text-[10px] text-neutral-400">
+                    STEP 03
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-[1fr_112px] gap-3">
                   <div className="space-y-2">
-                    <Label htmlFor="database-host">Host</Label>
+                    <Label
+                      htmlFor="database-host"
+                      className="text-xs text-neutral-600"
+                    >
+                      Host
+                    </Label>
+
                     <Input
                       id="database-host"
                       placeholder="localhost"
@@ -371,12 +434,19 @@ export default function ConnectDatabaseForm({
                       onChange={(event) =>
                         updateField("host", event.target.value)
                       }
+                      className="h-10 rounded-none border-neutral-200 bg-white text-sm shadow-none placeholder:text-neutral-400 focus-visible:border-[#f36b3f] focus-visible:ring-0"
                       required
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="database-port">Port</Label>
+                    <Label
+                      htmlFor="database-port"
+                      className="text-xs text-neutral-600"
+                    >
+                      Port
+                    </Label>
+
                     <Input
                       id="database-port"
                       type="number"
@@ -388,13 +458,20 @@ export default function ConnectDatabaseForm({
                       onChange={(event) =>
                         updateField("port", event.target.value)
                       }
+                      className="h-10 rounded-none border-neutral-200 bg-white text-sm shadow-none placeholder:text-neutral-400 focus-visible:border-[#f36b3f] focus-visible:ring-0"
                       required
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="database-name">Database name</Label>
+                  <Label
+                    htmlFor="database-name"
+                    className="text-xs text-neutral-600"
+                  >
+                    Database name
+                  </Label>
+
                   <Input
                     id="database-name"
                     placeholder="my_database"
@@ -403,12 +480,19 @@ export default function ConnectDatabaseForm({
                     onChange={(event) =>
                       updateField("database", event.target.value)
                     }
+                    className="h-10 rounded-none border-neutral-200 bg-white text-sm shadow-none placeholder:text-neutral-400 focus-visible:border-[#f36b3f] focus-visible:ring-0"
                     required
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="database-username">Username</Label>
+                  <Label
+                    htmlFor="database-username"
+                    className="text-xs text-neutral-600"
+                  >
+                    Username
+                  </Label>
+
                   <Input
                     id="database-username"
                     placeholder="Database username"
@@ -417,12 +501,18 @@ export default function ConnectDatabaseForm({
                     onChange={(event) =>
                       updateField("username", event.target.value)
                     }
+                    className="h-10 rounded-none border-neutral-200 bg-white text-sm shadow-none placeholder:text-neutral-400 focus-visible:border-[#f36b3f] focus-visible:ring-0"
                     required
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="database-password">Password</Label>
+                  <Label
+                    htmlFor="database-password"
+                    className="text-xs text-neutral-600"
+                  >
+                    Password
+                  </Label>
 
                   <div className="relative">
                     <Input
@@ -434,7 +524,7 @@ export default function ConnectDatabaseForm({
                       onChange={(event) =>
                         updateField("password", event.target.value)
                       }
-                      className="pr-11"
+                      className="h-10 rounded-none border-neutral-200 bg-white pr-11 text-sm shadow-none placeholder:text-neutral-400 focus-visible:border-[#f36b3f] focus-visible:ring-0"
                       required
                     />
 
@@ -444,14 +534,18 @@ export default function ConnectDatabaseForm({
                       aria-label={
                         showPassword ? "Hide password" : "Show password"
                       }
-                      className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-foreground"
+                      disabled={isTesting}
+                      className="absolute inset-y-0 right-0 flex items-center px-3 text-neutral-400 transition-colors hover:text-neutral-950 disabled:cursor-not-allowed"
                     >
-                      <Icon name={showPassword ? "eye-off" : "eye"} size={17} />
+                      <Icon
+                        name={showPassword ? "eye-off" : "eye"}
+                        size={16}
+                      />
                     </button>
                   </div>
                 </div>
 
-                <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-border p-3">
+                <label className="flex cursor-pointer items-start gap-3 border border-neutral-200 p-3 transition-colors hover:border-neutral-300">
                   <input
                     type="checkbox"
                     checked={form.ssl}
@@ -459,45 +553,40 @@ export default function ConnectDatabaseForm({
                     onChange={(event) =>
                       updateField("ssl", event.target.checked)
                     }
-                    className="size-4 accent-orange-500"
+                    className="mt-0.5 size-4 accent-[#f36b3f]"
                   />
 
                   <div>
-                    <p className="text-sm font-medium">Enable SSL</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-sm font-medium text-neutral-800">
+                      Enable SSL
+                    </p>
+                    <p className="mt-0.5 text-xs text-neutral-500">
                       Use an encrypted database connection.
                     </p>
                   </div>
                 </label>
-              </>
-            )}
-
-            {isTesting && (
-              <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
-                <Icon name="loading" size={16} />
-                Testing database connection...
-              </div>
+              </section>
             )}
 
             {testResult?.success && !isTesting && (
-              <div className="space-y-1 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
-                <div className="flex items-center gap-2 text-sm font-medium text-emerald-600">
+              <div className="border border-emerald-200 bg-emerald-50/50 p-3">
+                <div className="flex items-center gap-2 text-sm font-medium text-emerald-700">
                   <Icon name="checkmark-circle" size={16} />
                   Connection successful
                 </div>
 
-                <p className="text-xs text-muted-foreground">
+                <p className="mt-1 text-xs text-neutral-600">
                   {testResult.message}
                 </p>
 
                 {testResult.latency !== undefined && (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="mt-2 font-mono text-xs text-neutral-500">
                     Latency: {testResult.latency} ms
                   </p>
                 )}
 
                 {testResult.serverVersion && (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="mt-1 font-mono text-xs text-neutral-500">
                     Server: {testResult.serverVersion}
                   </p>
                 )}
@@ -505,47 +594,62 @@ export default function ConnectDatabaseForm({
             )}
 
             {testError && (
-              <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3">
-                <div className="flex items-center gap-2 text-sm font-medium text-destructive">
+              <div className="border border-red-200 bg-red-50/50 p-3">
+                <div className="flex items-center gap-2 text-sm font-medium text-red-700">
                   <Icon name="alert-circle" size={16} />
                   Connection failed
                 </div>
 
-                <p className="mt-1 text-xs text-muted-foreground">
+                <p className="mt-1 text-xs leading-relaxed text-neutral-600">
                   {testError}
                 </p>
               </div>
             )}
           </div>
 
-          <div className="flex flex-wrap items-center justify-end gap-3 border-t border-border bg-muted/20 px-6 py-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-muted"
-            >
-              Cancel
-            </button>
+          <div className="flex flex-wrap items-center justify-right gap-3 border-t border-neutral-200 bg-neutral-50/70 px-6 py-4">
+            <p className="text-[11px] text-neutral-400">
+              {isSaveEnabled
+                ? "Connection verified."
+                : "Test your connection before saving."}
+            </p>
 
-            <button
-              type="button"
-              onClick={handleTestConnection}
-              disabled={!isFormValid || isTesting}
-              className="rounded-lg border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              {isTesting ? "Testing..." : "Test Connection"}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={isTesting}
+                className="h-9 border border-neutral-200 bg-white px-4 text-sm font-medium text-neutral-600 transition-colors hover:border-neutral-950 hover:text-neutral-950 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Cancel
+              </button>
 
-            <button
-              type="submit"
-              disabled={!isSaveEnabled}
-              className="rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-background transition-opacity hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Save Connection
-            </button>
+              <button
+                type="button"
+                onClick={handleTestConnection}
+                disabled={!isFormValid || isTesting}
+                className="inline-flex h-9 items-center justify-center gap-2 border border-neutral-300 bg-white px-4 text-sm font-medium text-neutral-800 transition-colors hover:border-neutral-950 hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {isTesting && (
+                  <span className="inline-flex animate-spin">
+                    <Icon name="loading" size={15} />
+                  </span>
+                )}
+
+                {isTesting ? "Testing..." : "Test Connection"}
+              </button>
+
+              <button
+                type="submit"
+                disabled={!isSaveEnabled}
+                className="h-9 bg-neutral-950 px-4 text-sm font-medium text-white transition-colors hover:bg-[#f36b3f] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Save Connection
+              </button>
+            </div>
           </div>
         </form>
       </div>
     </div>
   );
-}
+};

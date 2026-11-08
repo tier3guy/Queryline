@@ -1,5 +1,6 @@
 "use client";
 
+import Logo from "@/components/shared/logo/logo";
 import type { SavedDatabaseConnection, WorkspaceConversation } from "@/features/workspace/types";
 
 interface SidebarProps {
@@ -49,7 +50,6 @@ export default function Sidebar({
   onSelectConnection,
   onDeleteConnection,
   onDeleteConversation,
-  onClearHistory,
 }: SidebarProps) {
   const handleDeleteConnection = (connectionId: string, name: string) => {
     if (
@@ -65,18 +65,12 @@ export default function Sidebar({
     conversationId: string,
     title: string,
   ) => {
-    if (window.confirm(`Delete conversation "${title}"? This cannot be undone.`)) {
-      onDeleteConversation(conversationId);
-    }
-  };
-
-  const handleClearHistory = () => {
     if (
       window.confirm(
-        "Delete all conversation history? Your saved database connections will not be affected.",
+        `Delete conversation "${title}"? This cannot be undone.`,
       )
     ) {
-      onClearHistory();
+      onDeleteConversation(conversationId);
     }
   };
 
@@ -92,39 +86,31 @@ export default function Sidebar({
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-[272px] flex-col border-r border-border bg-background transition-transform duration-200 lg:static lg:z-auto lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-[272px] flex-col border-r border-neutral-200 bg-white transition-transform duration-200 lg:static lg:z-auto lg:translate-x-0 ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="flex h-16 items-center justify-between border-b border-border px-5">
-          <a href="/workspace" className="flex items-center gap-2.5">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-orange-500 text-lg font-semibold text-white">
-              q
-            </div>
-
-            <span className="text-[17px] font-semibold tracking-tight">
-              Queryline
-            </span>
-          </a>
+        <div className="flex h-16 shrink-0 items-center justify-between border-b border-neutral-200 px-5">
+          <Logo />
 
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-2 text-muted-foreground hover:bg-muted lg:hidden"
+            className="p-2 text-neutral-500 hover:bg-neutral-100 lg:hidden"
             aria-label="Close sidebar"
           >
             <span className="text-lg">×</span>
           </button>
         </div>
 
-        <div className="space-y-2 p-4">
+        <div className="shrink-0 space-y-2 border-b border-neutral-200 p-4">
           <button
             type="button"
             onClick={() => {
               onNewChat();
               onClose();
             }}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-foreground px-4 py-2.5 text-sm font-medium text-background transition-opacity hover:opacity-85"
+            className="flex w-full items-center justify-center gap-2 bg-neutral-950 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#f36b3f]"
           >
             <span className="text-lg leading-none">+</span>
             New Chat
@@ -136,22 +122,22 @@ export default function Sidebar({
               onNewConnection();
               onClose();
             }}
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium transition-colors hover:bg-muted"
+            className="flex w-full items-center justify-center gap-2 border border-neutral-200 px-4 py-2.5 text-sm font-medium text-neutral-700 transition-colors hover:border-neutral-400 hover:bg-neutral-50"
           >
             <span className="text-lg leading-none">+</span>
             New Connection
           </button>
         </div>
 
-        <div className="flex-1 space-y-6 overflow-y-auto px-3 pb-4">
+        <div className="flex-1 space-y-7 overflow-y-auto px-3 py-5">
           <section>
             <div className="mb-3 flex items-center justify-between px-2">
-              <h2 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+              <h2 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-400">
                 Connections
               </h2>
 
-              <span className="text-[10px] tabular-nums text-muted-foreground">
-                {connections.length}
+              <span className="text-[10px] tabular-nums text-neutral-400">
+                {connections.length.toString().padStart(2, "0")}
               </span>
             </div>
 
@@ -160,10 +146,10 @@ export default function Sidebar({
                 {connections.map((connection) => (
                   <div
                     key={connection.id}
-                    className={`group flex items-center gap-1 rounded-lg pr-1 transition-colors ${
+                    className={`group flex items-center gap-1 border-l-2 pr-1 transition-colors ${
                       activeConnectionId === connection.id
-                        ? "bg-muted"
-                        : "hover:bg-muted/60"
+                        ? "border-[#f36b3f] bg-neutral-100"
+                        : "border-transparent hover:bg-neutral-50"
                     }`}
                   >
                     <button
@@ -172,28 +158,28 @@ export default function Sidebar({
                         onSelectConnection(connection.id);
                         onClose();
                       }}
-                      className={`flex min-w-0 flex-1 items-center gap-3 rounded-lg px-3 py-2.5 text-left ${
+                      className={`flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5 text-left ${
                         activeConnectionId === connection.id
-                          ? "text-foreground"
-                          : "text-muted-foreground hover:text-foreground"
+                          ? "text-neutral-950"
+                          : "text-neutral-500 hover:text-neutral-950"
                       }`}
                     >
-                      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-xs font-semibold">
+                      <span className="flex size-8 shrink-0 items-center justify-center border border-neutral-200 bg-white text-[10px] font-semibold text-neutral-600">
                         {databaseInitials[connection.config.type]}
                       </span>
 
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[13px] font-medium">
+                        <span className="block truncate text-[12px] font-medium">
                           {connection.config.name}
                         </span>
 
-                        <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
+                        <span className="mt-0.5 block truncate text-[10px] text-neutral-400">
                           {databaseLabels[connection.config.type]}
                         </span>
                       </span>
 
                       {activeConnectionId === connection.id && (
-                        <span className="size-1.5 shrink-0 rounded-full bg-emerald-500" />
+                        <span className="size-1.5 shrink-0 bg-[#f36b3f]" />
                       )}
                     </button>
 
@@ -207,7 +193,7 @@ export default function Sidebar({
                           connection.config.name,
                         )
                       }
-                      className="shrink-0 rounded-full p-2 text-muted-foreground opacity-0 transition-all hover:bg-background hover:text-destructive group-hover:opacity-100 focus:opacity-100"
+                      className="shrink-0 p-2 text-neutral-400 opacity-0 transition-all hover:bg-white hover:text-red-600 group-hover:opacity-100 focus:opacity-100"
                     >
                       <span aria-hidden="true">×</span>
                     </button>
@@ -215,7 +201,7 @@ export default function Sidebar({
                 ))}
               </div>
             ) : (
-              <p className="px-3 py-2 text-xs leading-5 text-muted-foreground">
+              <p className="px-3 py-2 text-xs leading-5 text-neutral-400">
                 No database connections yet.
               </p>
             )}
@@ -223,19 +209,13 @@ export default function Sidebar({
 
           <section>
             <div className="mb-3 flex items-center justify-between px-2">
-              <h2 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                Recent conversations
+              <h2 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-400">
+                Recent Conversations
               </h2>
 
-              {/* {conversations.length > 0 && (
-                <button
-                  type="button"
-                  onClick={handleClearHistory}
-                  className="text-[10px] font-medium text-muted-foreground transition-colors hover:text-destructive"
-                >
-                  Clear all
-                </button>
-              )} */}
+              <span className="text-[10px] tabular-nums text-neutral-400">
+                {conversations.length.toString().padStart(2, "0")}
+              </span>
             </div>
 
             {conversations.length > 0 ? (
@@ -243,10 +223,10 @@ export default function Sidebar({
                 {conversations.map((conversation) => (
                   <div
                     key={conversation.id}
-                    className={`group flex items-center gap-1 rounded-lg pr-1 transition-colors ${
+                    className={`group flex items-center gap-1 border-l-2 pr-1 transition-colors ${
                       activeConversationId === conversation.id
-                        ? "bg-muted"
-                        : "hover:bg-muted/60"
+                        ? "border-[#f36b3f] bg-neutral-100"
+                        : "border-transparent hover:bg-neutral-50"
                     }`}
                   >
                     <button
@@ -255,10 +235,10 @@ export default function Sidebar({
                         onSelectConversation(conversation.id);
                         onClose();
                       }}
-                      className={`min-w-0 flex-1 truncate rounded-lg px-3 py-2.5 text-left text-[13px] transition-colors ${
+                      className={`min-w-0 flex-1 truncate px-3 py-2.5 text-left text-[12px] transition-colors ${
                         activeConversationId === conversation.id
-                          ? "font-medium text-foreground"
-                          : "text-muted-foreground hover:text-foreground"
+                          ? "font-medium text-neutral-950"
+                          : "text-neutral-500 hover:text-neutral-950"
                       }`}
                     >
                       {conversation.title}
@@ -274,7 +254,7 @@ export default function Sidebar({
                           conversation.title,
                         )
                       }
-                      className="shrink-0 rounded-full m-2 p-2 text-muted-foreground opacity-0 transition-all hover:bg-background hover:text-destructive group-hover:opacity-100 focus:opacity-100"
+                      className="m-1 shrink-0 p-2 text-neutral-400 opacity-0 transition-all hover:bg-white hover:text-red-600 group-hover:opacity-100 focus:opacity-100"
                     >
                       <span aria-hidden="true">×</span>
                     </button>
@@ -282,11 +262,31 @@ export default function Sidebar({
                 ))}
               </div>
             ) : (
-              <p className="px-3 py-2 text-xs leading-5 text-muted-foreground">
+              <p className="px-3 py-2 text-xs leading-5 text-neutral-400">
                 Your conversations will appear here.
               </p>
             )}
           </section>
+        </div>
+
+        <div className="shrink-0 border-t border-neutral-200 p-4">
+          <div className="flex items-center gap-3">
+            <div className="flex size-9 shrink-0 items-center justify-center border border-neutral-200 bg-neutral-100 text-xs font-semibold text-neutral-700">
+              G
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[12px] font-semibold text-neutral-900">
+                Guest User
+              </p>
+
+              <p className="mt-0.5 text-[10px] uppercase tracking-[0.12em] text-neutral-400">
+                Local Session
+              </p>
+            </div>
+
+            <span className="size-1.5 bg-[#f36b3f]" />
+          </div>
         </div>
       </aside>
     </>

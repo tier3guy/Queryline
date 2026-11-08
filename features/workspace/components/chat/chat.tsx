@@ -1,7 +1,8 @@
 "use client";
 
-import MessageContent from "./message-content";
 import type { ChatMessage } from "@/features/workspace/types";
+
+import MessageContent from "./message-content";
 
 interface ChatProps {
   messages: ChatMessage[];
@@ -16,21 +17,25 @@ const suggestions = [
     description: "Show me all tables and their structure.",
     prompt:
       "Show me all the tables in my database and explain their structure.",
+    number: "01",
   },
   {
     title: "Analyze my data",
     description: "Find useful insights from my data.",
     prompt: "Analyze my database and identify some interesting insights.",
+    number: "02",
   },
   {
     title: "Find records",
     description: "Search for specific records.",
     prompt: "Show me the 10 most recently created records.",
+    number: "03",
   },
   {
     title: "Understand relationships",
     description: "Explore connections between tables.",
     prompt: "Explain the relationships between the tables in my database.",
+    number: "04",
   },
 ];
 
@@ -62,29 +67,29 @@ function AssistantError({
   return (
     <div
       role="alert"
-      className="overflow-hidden rounded-xl border border-destructive/20 bg-destructive/5"
+      className="overflow-hidden border border-red-200 bg-red-50/50"
     >
-      <div className="flex gap-3 p-4">
-        <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-destructive/10">
-          <span className="text-sm font-semibold text-destructive">!</span>
+      <div className="flex gap-3 p-4 sm:p-5">
+        <div className="flex size-7 shrink-0 items-center justify-center border border-red-200 bg-white text-xs font-semibold text-red-600">
+          !
         </div>
 
         <div className="min-w-0 flex-1 space-y-2">
-          <p className="text-sm font-semibold text-foreground">
+          <p className="text-[13px] font-semibold text-red-800">
             {error.title}
           </p>
 
-          <p className="text-sm leading-6 text-muted-foreground">
+          <p className="text-[12px] leading-6 text-red-700/80">
             {error.message}
           </p>
 
           {error.code === "RATE_LIMITED" && isValidRetryDate && (
-            <div className="rounded-lg border border-border/70 bg-background/70 p-3">
-              <p className="text-xs text-muted-foreground">
+            <div className="border border-red-200 bg-white p-3">
+              <p className="text-[10px] uppercase tracking-wider text-neutral-400">
                 Free model quota resets at
               </p>
 
-              <p className="mt-1 text-sm font-medium text-foreground">
+              <p className="mt-1 text-[12px] font-medium text-neutral-800">
                 {retryDate.toLocaleString(undefined, {
                   dateStyle: "medium",
                   timeStyle: "short",
@@ -94,7 +99,7 @@ function AssistantError({
           )}
 
           {error.action && (
-            <p className="border-t border-destructive/10 pt-3 text-xs leading-5 text-muted-foreground">
+            <p className="border-t border-red-200 pt-3 text-[11px] leading-5 text-red-700/80">
               {error.action}
             </p>
           )}
@@ -109,59 +114,64 @@ function QueryExecution({
 }: {
   execution: NonNullable<ChatMessage["queryExecutions"]>[number];
 }) {
+  const isMongoQuery = execution.query.trimStart().startsWith("{");
+
   return (
-    <div className="mt-5 overflow-hidden rounded-xl border border-border">
-      <div className="flex items-center justify-between gap-3 border-b border-border bg-muted/40 px-4 py-3">
+    <div className="mt-5 overflow-hidden border border-neutral-200">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 bg-neutral-50 px-4 py-3">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-medium">
-            {execution.query.trimStart().startsWith("{")
-              ? "MongoDB Query"
-              : "SQL Query"}
+          <span className="text-[11px] font-semibold text-neutral-800">
+            {isMongoQuery ? "MongoDB Query" : "SQL Query"}
           </span>
 
-          <span className="text-[10px] text-muted-foreground">
-            Executed automatically
+          <span className="border border-neutral-200 bg-white px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-neutral-400">
+            Executed
           </span>
         </div>
 
         <span
-          className={
-            execution.success
-              ? "text-[11px] font-medium text-emerald-600"
-              : "text-[11px] font-medium text-destructive"
-          }
+          className={`flex items-center gap-1.5 text-[10px] font-medium ${
+            execution.success ? "text-neutral-600" : "text-red-600"
+          }`}
         >
+          <span
+            className={`size-1.5 ${
+              execution.success ? "bg-[#f36b3f]" : "bg-red-500"
+            }`}
+          />
+
           {execution.success ? "Successful" : "Failed"}
         </span>
       </div>
 
-      <div className="overflow-x-auto bg-muted/20 p-4">
-        <pre className="min-w-0 whitespace-pre-wrap break-all font-mono text-xs leading-6">
+      <div className="overflow-x-auto bg-white p-4">
+        <pre className="min-w-0 whitespace-pre-wrap break-all font-mono text-[11px] leading-6 text-neutral-700">
           {execution.query}
         </pre>
       </div>
 
       {execution.success && execution.result && (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-4 py-3">
-            <span className="text-xs font-medium">Query results</span>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-y border-neutral-200 bg-neutral-50 px-4 py-3">
+            <span className="text-[11px] font-semibold text-neutral-800">
+              Query Results
+            </span>
 
-            <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+            <div className="flex items-center gap-3 text-[10px] tabular-nums text-neutral-400">
               <span>{execution.result.rowCount} rows</span>
-
               <span>{execution.result.executionTime} ms</span>
             </div>
           </div>
 
           {execution.result.columns.length > 0 && (
-            <div className="max-h-80 overflow-auto border-t border-border">
-              <table className="w-full border-collapse text-left text-xs">
-                <thead className="sticky top-0 bg-muted">
+            <div className="max-h-80 overflow-auto">
+              <table className="w-full border-collapse text-left text-[11px]">
+                <thead className="sticky top-0 z-10 bg-neutral-100">
                   <tr>
                     {execution.result.columns.map((column) => (
                       <th
                         key={column}
-                        className="whitespace-nowrap border-b border-border px-4 py-3 font-medium"
+                        className="whitespace-nowrap border-b border-r border-neutral-200 px-4 py-3 font-semibold text-neutral-600 last:border-r-0"
                       >
                         {column}
                       </th>
@@ -173,12 +183,12 @@ function QueryExecution({
                   {execution.result.rows.map((row, rowIndex) => (
                     <tr
                       key={rowIndex}
-                      className="border-b border-border last:border-0 hover:bg-muted/40"
+                      className="border-b border-neutral-100 last:border-0 hover:bg-neutral-50"
                     >
                       {execution.result!.columns.map((column) => (
                         <td
                           key={column}
-                          className="max-w-64 whitespace-nowrap px-4 py-3 text-muted-foreground"
+                          className="max-w-64 whitespace-nowrap border-r border-neutral-100 px-4 py-3 text-neutral-600 last:border-r-0"
                         >
                           <span className="block truncate">
                             {formatCellValue(row[column])}
@@ -193,7 +203,7 @@ function QueryExecution({
           )}
 
           {execution.result.rows.length === 0 && (
-            <p className="border-t border-border px-4 py-6 text-center text-xs text-muted-foreground">
+            <p className="border-t border-neutral-100 px-4 py-8 text-center text-[11px] text-neutral-400">
               The query executed successfully but returned no rows.
             </p>
           )}
@@ -201,8 +211,8 @@ function QueryExecution({
       )}
 
       {!execution.success && (
-        <div className="border-t border-border bg-destructive/5 px-4 py-3">
-          <p className="text-xs text-destructive">
+        <div className="border-t border-red-200 bg-red-50/50 px-4 py-3">
+          <p className="text-[11px] leading-5 text-red-700">
             {execution.error ?? "Query execution failed."}
           </p>
         </div>
@@ -219,37 +229,67 @@ export default function Chat({
 }: ChatProps) {
   if (messages.length === 0) {
     return (
-      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center px-4 py-12 sm:px-5">
+      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center px-5 py-12 sm:px-8">
         <div className="mb-10">
-          <p className="mb-3 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
-            Queryline AI
-          </p>
+          <div className="mb-5 flex items-center gap-2">
+            <span className="flex size-7 items-center justify-center bg-neutral-950 text-xs font-semibold text-white">
+              q
+            </span>
 
-          <h1 className="text-3xl font-medium tracking-tight sm:text-4xl">
-            Your database,
+            <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-neutral-500">
+              Queryline AI
+            </span>
+          </div>
+
+          <h1 className="max-w-xl text-3xl font-semibold leading-[1.15] tracking-tight text-neutral-950 sm:text-4xl">
+            Ask your database
             <br />
-            <span className="text-muted-foreground">understood.</span>
+            <span className="text-neutral-400">anything.</span>
           </h1>
 
-          <p className="mt-4 max-w-lg text-sm leading-6 text-muted-foreground">
-            Ask questions in natural language. Explore your schema, execute
-            queries, and understand your data without writing SQL.
+          <p className="mt-5 max-w-lg text-[13px] leading-6 text-neutral-500">
+            Explore your schema, execute queries, and understand your data
+            using natural language. No need to write SQL yourself.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="mb-3 flex items-center justify-between border-b border-neutral-200 pb-3">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-400">
+            Get started
+          </p>
+
+          <span className="text-[10px] text-neutral-400">
+            Suggested queries
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 gap-px border border-neutral-200 bg-neutral-200 sm:grid-cols-2">
           {suggestions.map((suggestion) => (
             <button
               key={suggestion.title}
               type="button"
               onClick={() => onSuggestionClick(suggestion.prompt)}
-              className="rounded-xl border border-border p-4 text-left transition-colors hover:bg-muted/50"
+              className="group flex min-h-28 flex-col justify-between bg-white p-4 text-left transition-colors hover:bg-neutral-50 sm:p-5"
             >
-              <p className="text-sm font-medium">{suggestion.title}</p>
+              <div className="flex items-start justify-between gap-3">
+                <span className="text-[10px] font-medium tabular-nums text-neutral-300">
+                  {suggestion.number}
+                </span>
 
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                {suggestion.description}
-              </p>
+                <span className="text-sm text-neutral-300 transition-colors group-hover:text-[#f36b3f]">
+                  ↗
+                </span>
+              </div>
+
+              <div className="mt-5">
+                <p className="text-[12px] font-semibold text-neutral-800">
+                  {suggestion.title}
+                </p>
+
+                <p className="mt-1 text-[11px] leading-5 text-neutral-400">
+                  {suggestion.description}
+                </p>
+              </div>
             </button>
           ))}
         </div>
@@ -258,8 +298,8 @@ export default function Chat({
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl flex-1 px-4 py-8 sm:px-5">
-      <div className="space-y-8">
+    <div className="mx-auto w-full max-w-3xl flex-1 px-5 py-8 sm:px-8 sm:py-10">
+      <div className="space-y-9">
         {messages.map((message) => {
           const isAssistant = message.role === "assistant";
           const isActiveAssistant = message.id === activeAssistantId;
@@ -281,38 +321,60 @@ export default function Chat({
               }
             >
               {message.role === "user" ? (
-                <div className="max-w-[85%] rounded-2xl bg-muted px-4 py-3 text-sm leading-6">
-                  {message.content}
+                <div className="max-w-[85%] border border-neutral-200 bg-neutral-50 px-4 py-3 sm:max-w-[75%]">
+                  <p className="whitespace-pre-wrap text-[12px] leading-6 text-neutral-800">
+                    {message.content}
+                  </p>
                 </div>
               ) : (
                 <div className="w-full min-w-0">
                   {message.error ? (
                     <>
-                      <p className="mb-3 text-xs font-semibold tracking-wide">
-                        QUERYLINE
-                      </p>
+                      <div className="mb-3 flex items-center gap-2">
+                        <span className="flex size-6 items-center justify-center bg-neutral-950 text-[10px] font-semibold text-white">
+                          q
+                        </span>
+
+                        <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-500">
+                          Queryline
+                        </span>
+                      </div>
 
                       <AssistantError error={message.error} />
                     </>
                   ) : isThinking ? (
                     <div className="flex items-center gap-3 py-3">
-                      <div className="flex gap-1">
-                        <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground" />
+                      <span className="flex size-6 items-center justify-center bg-neutral-950 text-[10px] font-semibold text-white">
+                        q
+                      </span>
 
-                        <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:150ms]" />
-
-                        <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:300ms]" />
-                      </div>
-
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-[11px] text-neutral-400">
                         Queryline is thinking...
+                      </span>
+
+                      <span className="flex gap-1">
+                        <span className="size-1 animate-bounce bg-[#f36b3f]" />
+
+                        <span className="size-1 animate-bounce bg-[#f36b3f] [animation-delay:150ms]" />
+
+                        <span className="size-1 animate-bounce bg-[#f36b3f] [animation-delay:300ms]" />
                       </span>
                     </div>
                   ) : (
                     <>
-                      <p className="mb-3 text-xs font-semibold tracking-wide">
-                        QUERYLINE
-                      </p>
+                      <div className="mb-4 flex items-center gap-2">
+                        <span className="flex size-6 items-center justify-center bg-neutral-950 text-[10px] font-semibold text-white">
+                          q
+                        </span>
+
+                        <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-500">
+                          Queryline
+                        </span>
+
+                        {isActiveAssistant && isLoading && (
+                          <span className="size-1.5 animate-pulse bg-[#f36b3f]" />
+                        )}
+                      </div>
 
                       <MessageContent
                         content={message.content}
