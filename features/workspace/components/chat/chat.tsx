@@ -1,8 +1,8 @@
 "use client";
 
-import type { ChatMessage } from "@/features/workspace/types";
-
 import MessageContent from "./message-content";
+import Logo from "@/components/shared/logo/logo";
+import type { ChatMessage } from "@/features/workspace/types";
 
 interface ChatProps {
   messages: ChatMessage[];
@@ -232,9 +232,7 @@ export default function Chat({
       <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center px-5 py-12 sm:px-8">
         <div className="mb-10">
           <div className="mb-5 flex items-center gap-2">
-            <span className="flex size-7 items-center justify-center bg-neutral-950 text-xs font-semibold text-white">
-              q
-            </span>
+            <Logo small />
 
             <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-neutral-500">
               Queryline AI

@@ -1,11 +1,12 @@
 import {
-  EyeIcon,
-  EyeOffIcon,
-  Loading03Icon,
-  PlugSocketIcon,
-  FloppyDiskIcon,
   AlertCircleIcon,
   CheckmarkCircle02Icon,
+  EyeIcon,
+  EyeOffIcon,
+  FloppyDiskIcon,
+  Loading03Icon,
+  PlugSocketIcon,
+  Settings01Icon,
 } from "@hugeicons/core-free-icons";
 
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -20,6 +21,7 @@ const iconMap = {
   "loading": Loading03Icon,
   "plug-socket": PlugSocketIcon,
   "floppy-disk": FloppyDiskIcon,
+  "settings": Settings01Icon,
 } as const;
 
 type IconName = keyof typeof iconMap;
