@@ -12,7 +12,7 @@ export default function Logo({ small }: LogoProps) {
         <span className="text-2xl">.</span>
       </div>
 
-      {!small && <span className="text-[19px] font-semibold tracking-[-0.8px] text-neutral-950 pl-8">
+      {!small && <span className="text-[19px] font-semibold tracking-[-0.8px] text-neutral-950">
         queryline
       </span>}
     </Link>
