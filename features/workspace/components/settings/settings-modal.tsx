@@ -1,14 +1,19 @@
 "use client";
 
 import Icon from "@/components/icons";
-import { useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
+import {
+  getOpenRouterSettings,
+  saveOpenRouterSettings,
+  validateOpenRouterApiKey,
+  type OpenRouterSettings,
+} from "@/features/workspace/services/settings-api";
 
 type QueryPermission = "read-only" | "ask-before-write" | "read-write";
-
-interface OpenRouterSettings {
-  apiKey: string;
-  model: string;
-}
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -46,6 +51,28 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
   const [showApiKey, setShowApiKey] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  const [serverStatus, setServerStatus] = useState<{
+    apiKey: string;
+    model: string;
+    configured: boolean;
+    lastValidated?: string;
+  } | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isValidating, setIsValidating] = useState(false);
+  const [validationResult, setValidationResult] = useState<
+    "valid" | "invalid" | null
+  >(null);
+  const [validationMessage, setValidationMessage] = useState("");
+
+  const fetchServerStatus = useCallback(async () => {
+    try {
+      const status = await getOpenRouterSettings();
+      setServerStatus(status ?? null);
+    } catch {
+      setServerStatus(null);
+    }
+  }, []);
+
   useEffect(() => {
     const storedPermission = localStorage.getItem(PERMISSION_STORAGE_KEY);
     const storedOpenRouter = localStorage.getItem(OPENROUTER_STORAGE_KEY);
@@ -69,9 +96,11 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
         localStorage.removeItem(OPENROUTER_STORAGE_KEY);
       }
     }
-  }, []);
 
-  const handleSave = () => {
+    fetchServerStatus();
+  }, [fetchServerStatus]);
+
+  const handleSave = async () => {
     const settings: OpenRouterSettings = {
       apiKey: apiKey.trim(),
       model: model.trim(),
@@ -80,7 +109,54 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
     localStorage.setItem(PERMISSION_STORAGE_KEY, permission);
     localStorage.setItem(OPENROUTER_STORAGE_KEY, JSON.stringify(settings));
 
-    setSaved(true);
+    setIsSaving(true);
+    try {
+      const result = await saveOpenRouterSettings(settings);
+
+      setSaved(true);
+      setValidationResult(result.valid ? "valid" : "invalid");
+      setValidationMessage(
+        result.message ??
+          (result.valid
+            ? "Settings saved and API key validated."
+            : "Settings saved, but the API key could not be validated."),
+      );
+
+      await fetchServerStatus();
+    } catch {
+      setSaved(true);
+      setValidationMessage("Saved locally. Unable to sync with the server.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleTestApiKey = async () => {
+    if (!apiKey.trim()) {
+      setValidationResult("invalid");
+      setValidationMessage("Please enter an API key to test.");
+      return;
+    }
+
+    setIsValidating(true);
+    setValidationResult(null);
+    setValidationMessage("");
+
+    try {
+      const result = await validateOpenRouterApiKey(apiKey.trim());
+      setValidationResult(result.valid ? "valid" : "invalid");
+      setValidationMessage(
+        result.message ??
+          (result.valid
+            ? "API key is valid."
+            : "API key validation failed. Check your key and try again."),
+      );
+    } catch {
+      setValidationResult("invalid");
+      setValidationMessage("Unable to validate the API key.");
+    } finally {
+      setIsValidating(false);
+    }
   };
 
   const handleClearApiKey = () => {
@@ -138,6 +214,36 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
               </p>
             </div>
 
+            {/* Server-side settings status */}
+            {serverStatus && (
+              <div className="mb-4 border border-neutral-200 bg-neutral-50/50 p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span
+                    className={`size-2 shrink-0 rounded-full ${
+                      serverStatus.configured ? "bg-emerald-500" : "bg-neutral-300"
+                    }`}
+                  />
+                  <span className="text-xs font-semibold text-neutral-700 uppercase">
+                    Server settings
+                  </span>
+                </div>
+                <p className="text-xs text-neutral-600">
+                  {serverStatus.configured
+                    ? `OpenRouter is configured on the server${
+                        serverStatus.lastValidated
+                          ? ` · last validated ${new Date(serverStatus.lastValidated).toLocaleDateString()}`
+                          : ""
+                      }.`
+                    : "No OpenRouter settings saved on the server."}
+                </p>
+                {serverStatus.model && (
+                  <p className="mt-1 text-[10px] font-mono text-neutral-400">
+                    Model: {serverStatus.model}
+                  </p>
+                )}
+              </div>
+            )}
+
             <div className="space-y-4">
               <div>
                 <label
@@ -166,18 +272,52 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
                     type="button"
                     onClick={() => setShowApiKey((current) => !current)}
                     aria-label={showApiKey ? "Hide API key" : "Show API key"}
-                    className="flex size-10 shrink-0 items-center justify-center text-neutral-400 transition-colors hover:text-neutral-700"
+                    disabled={isValidating}
+                    className="flex size-10 shrink-0 items-center justify-center text-neutral-400 transition-colors hover:text-neutral-700 disabled:opacity-50"
                   >
                     <Icon
                       name={showApiKey ? "eye-off" : "eye"}
                       size={17}
                     />
                   </button>
+
+                  {apiKey.trim() && (
+                    <button
+                      type="button"
+                      onClick={handleTestApiKey}
+                      disabled={isValidating}
+                      aria-label={
+                        isValidating ? "Validating API key..." : "Test API key"
+                      }
+                      className="ml-2 flex size-10 shrink-0 items-center justify-center text-neutral-400 transition-colors hover:text-[#f36b3f] disabled:opacity-50"
+                    >
+                      {isValidating ? (
+                        <span className="text-[10px]">↻</span>
+                      ) : (
+                        <Icon name="alert-circle" size={15} />
+                      )}
+                    </button>
+                  )}
                 </div>
 
+                {validationResult !== null && (
+                  <p className="mt-2 text-[11px] leading-5">
+                    <span
+                      className={`font-medium ${
+                        validationResult === "valid"
+                          ? "text-emerald-700"
+                          : "text-red-700"
+                      }`}
+                    >
+                      {validationResult === "valid" ? "✓" : "✗"}
+                    </span>{" "}
+                    {validationMessage}
+                  </p>
+                )}
+
                 <p className="mt-2 text-[11px] leading-5 text-neutral-500">
-                  Your key is saved in this browser&apos;s local storage.
-                  Queryline does not save it in its database.
+                  Your key is saved in this browser&apos;s local storage and
+                  synced to the server when you save.
                 </p>
               </div>
 
@@ -272,18 +412,6 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
                 </a>
               </div>
 
-              <div className="flex gap-2 border border-amber-200 bg-amber-50 p-3">
-                <span className="mt-0.5 shrink-0 text-amber-700">
-                  <Icon name="alert-circle" size={15} />
-                </span>
-
-                <p className="text-[11px] leading-5 text-amber-900">
-                  Local storage is not encrypted. Anyone with access to this
-                  browser profile, including scripts running on this page,
-                  may be able to access your API key. Avoid saving it on
-                  shared or untrusted devices.
-                </p>
-              </div>
 
               {apiKey && (
                 <button
@@ -297,11 +425,9 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
             </div>
           </section>
 
-          <div className="my-6 border-t border-neutral-200" />
-
           {/* Query Permissions */}
           <section>
-            <div className="mb-4">
+            <div className="mb-4 mt-6">
               <h3 className="text-sm font-semibold text-neutral-900">
                 Query execution permissions
               </h3>
@@ -357,14 +483,17 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
 
         <div className="flex items-center justify-between border-t border-neutral-200 px-6 py-4">
           <p className="text-xs text-neutral-500">
-            {saved ? "Settings saved locally." : "Changes are not saved yet."}
+            {saved
+              ? "Settings saved locally and synced to server."
+              : "Changes are not saved yet."}
           </p>
 
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="h-9 border border-neutral-200 px-4 text-xs font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
+              disabled={isSaving || isValidating}
+              className="h-9 border border-neutral-200 px-4 text-xs font-medium text-neutral-700 transition-colors hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancel
             </button>
@@ -372,9 +501,10 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
             <button
               type="button"
               onClick={handleSave}
-              className="h-9 bg-neutral-950 px-4 text-xs font-medium text-white transition-colors hover:bg-[#f36b3f]"
+              disabled={isSaving || isValidating}
+              className="h-9 bg-neutral-950 px-4 text-xs font-medium text-white transition-colors hover:bg-[#f36b3f] disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Save settings
+              {isSaving ? "Saving..." : "Save settings"}
             </button>
           </div>
         </div>
