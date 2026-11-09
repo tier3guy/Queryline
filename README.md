@@ -1,5 +1,7 @@
 # Queryline
 
+[![Queryline Banner](/public/queryline.png)](queryline.tier3guy.com)
+
 **Your database, understood.**
 
 Queryline is an AI-powered database workspace that lets you interact with your databases using natural language. Ask questions about your data, explore database schemas, and execute read-only queries without writing SQL manually.
