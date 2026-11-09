@@ -7,6 +7,8 @@ import {
   Loading03Icon,
   PlugSocketIcon,
   Settings01Icon,
+  AiChat02Icon,
+  ConnectIcon,
 } from "@hugeicons/core-free-icons";
 
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -22,6 +24,8 @@ const iconMap = {
   "plug-socket": PlugSocketIcon,
   "floppy-disk": FloppyDiskIcon,
   "settings": Settings01Icon,
+  "ai-chat": AiChat02Icon,
+  "connect": ConnectIcon,
 } as const;
 
 type IconName = keyof typeof iconMap;
