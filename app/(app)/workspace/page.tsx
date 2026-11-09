@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Chat from "@/features/workspace/components/chat/chat";
 import type { DatabaseConnectionConfig } from "@/lib/database/types";
 import Sidebar from "@/features/workspace/components/sidebar/sidebar";
@@ -13,12 +13,17 @@ import type {
   ChatMessage,
   SavedDatabaseConnection,
   WorkspaceConversation,
+  WorkspaceQueryPermission,
 } from "@/features/workspace/types";
+import type { PendingApproval } from "@/lib/database/query-types";
+import Icon from "@/components/icons";
 
 interface OpenRouterSettings {
   apiKey: string;
   model: string;
 }
+
+const PERMISSION_STORAGE_KEY = "queryline:query-permission";
 
 export default function WorkspacePage() {
   const { workspace, setWorkspace, isLoaded } = useWorkspaceStorage();
@@ -34,6 +39,32 @@ export default function WorkspacePage() {
   const [activeAssistantId, setActiveAssistantId] = useState<string | null>(
     null,
   );
+  const [permission, setPermission] = useState<WorkspaceQueryPermission>(
+    "read-only",
+  );
+  const [pendingApproval, setPendingApproval] = useState<{
+    id: string;
+    query: string;
+    databaseType: string;
+  } | null>(null);
+  const [pendingApprovalDialogOpen, setPendingApprovalDialogOpen] =
+    useState(false);
+
+  // Load query permission from settings (localStorage).
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(PERMISSION_STORAGE_KEY);
+      if (
+        stored === "read-only" ||
+        stored === "ask-before-write" ||
+        stored === "read-write"
+      ) {
+        setPermission(stored);
+      }
+    } catch {
+      // Ignore storage errors; default to read-only.
+    }
+  }, []);
 
   const activeConversation =
     workspace.conversations.find(
@@ -167,6 +198,7 @@ export default function WorkspacePage() {
                 },
               }
             : {}),
+          permission,
         }),
       });
 
@@ -247,6 +279,41 @@ export default function WorkspacePage() {
               ),
             );
           }
+
+          if (payload.type === "pending_approval") {
+            setPendingApproval(payload.pendingApproval);
+            setPendingApprovalDialogOpen(true);
+
+            updateConversationMessages(conversationId, (previous) =>
+              previous.map((item) =>
+                item.id === assistantId
+                  ? {
+                      ...item,
+                      pendingApproval: payload.pendingApproval,
+                    }
+                  : item,
+              ),
+            );
+          }
+
+          if (payload.type === "query_executed") {
+            setPendingApproval(null);
+            setPendingApprovalDialogOpen(false);
+
+            updateConversationMessages(conversationId, (previous) =>
+              previous.map((item) =>
+                item.id === assistantId
+                  ? {
+                      ...item,
+                      pendingApproval: {
+                        ...item.pendingApproval,
+                        status: "approved",
+                      } as PendingApproval,
+                    }
+                  : item,
+              ),
+            );
+          }
         }
       }
     } catch (error) {
@@ -276,6 +343,224 @@ export default function WorkspacePage() {
   const handleOpenNewConnection = () => {
     setEditingConnectionId(null);
     setConnectDialogOpen(true);
+  };
+
+  const handlePendingApprovalAction = async (
+    action: "approve" | "reject" | "edit",
+    editedQuery?: string,
+  ) => {
+    if (!pendingApproval || !activeConversation) return;
+
+    setPendingApprovalDialogOpen(false);
+
+    if (action === "reject") {
+      setPendingApproval(null);
+      updateConversationMessages(activeConversation.id, (previous) =>
+        previous.map((item) => {
+          if (item.pendingApproval?.id === pendingApproval.id) {
+            return {
+              ...item,
+              pendingApproval: {
+                ...item.pendingApproval,
+                status: "rejected",
+              } as PendingApproval,
+            };
+          }
+          return item;
+        }),
+      );
+      return;
+    }
+
+    const queryToExecute =
+      action === "edit" && editedQuery ? editedQuery : pendingApproval.query;
+
+    setPendingApproval({
+      ...pendingApproval,
+      query: queryToExecute,
+    });
+
+    updateConversationMessages(activeConversation.id, (previous) =>
+      previous.map((item) => {
+        if (item.pendingApproval?.id === pendingApproval.id) {
+          return {
+            ...item,
+            pendingApproval: {
+              ...item.pendingApproval,
+              query: queryToExecute,
+            } as PendingApproval,
+          };
+        }
+        return item;
+      }),
+    );
+
+    if (action === "approve" || action === "edit") {
+      await executeApprovedQuery(queryToExecute);
+    }
+  };
+
+  const executeApprovedQuery = async (query: string) => {
+    if (!activeConnection || !activeConversation) return;
+
+    setIsSending(true);
+
+    try {
+      const storedSettings = localStorage.getItem(
+        "queryline:openrouter-settings",
+      );
+
+      let openRouterSettings: OpenRouterSettings | null = null;
+
+      if (storedSettings) {
+        try {
+          openRouterSettings = JSON.parse(storedSettings) as OpenRouterSettings;
+        } catch {
+          // Ignore invalid settings.
+        }
+      }
+
+      const response = await fetch("/api/ai/query", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          query,
+          connection: activeConnection.config,
+          ...(openRouterSettings?.apiKey?.trim() &&
+          openRouterSettings?.model?.trim()
+            ? {
+                openRouter: {
+                  apiKey: openRouterSettings.apiKey.trim(),
+                  model: openRouterSettings.model.trim(),
+                },
+              }
+            : {}),
+          permission: "read-write",
+          pendingApprovalId: pendingApproval?.id ?? "",
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message ?? "Failed to execute approved query.");
+      }
+
+      if (!response.body) {
+        throw new Error("Streaming is not supported by this response.");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+
+        if (done) {
+          break;
+        }
+
+        buffer += decoder.decode(value, { stream: true });
+
+        const events = buffer.split("\n\n");
+
+        buffer = events.pop() ?? "";
+
+        for (const event of events) {
+          const data = event
+            .split("\n")
+            .find((line) => line.startsWith("data: "));
+
+          if (!data) {
+            continue;
+          }
+
+          const payload = JSON.parse(data.slice(6));
+
+          if (payload.type === "query_executed") {
+            setPendingApproval(null);
+            setPendingApprovalDialogOpen(false);
+
+            updateConversationMessages(activeConversation.id, (previous) =>
+              previous.map((item) => {
+                if (item.pendingApproval?.id === pendingApproval?.id) {
+                  return {
+                    ...item,
+                    queryExecutions: [
+                      ...(item.queryExecutions ?? []),
+                      {
+                        query: payload.query,
+                        success: payload.success,
+                        result: payload.result,
+                        error: payload.error,
+                        isWrite: true,
+                      },
+                    ],
+                    pendingApproval: {
+                      ...item.pendingApproval,
+                      status: "approved",
+                    } as PendingApproval,
+                  };
+                }
+                return item;
+              }),
+            );
+          }
+
+          if (payload.type === "error") {
+            setPendingApproval(null);
+            setPendingApprovalDialogOpen(false);
+
+            updateConversationMessages(activeConversation.id, (previous) =>
+              previous.map((item) => {
+                if (item.pendingApproval?.id === pendingApproval?.id) {
+                  return {
+                    ...item,
+                    pendingApproval: {
+                      ...item.pendingApproval,
+                      status: "rejected",
+                    } as PendingApproval,
+                    error: payload.error as ChatError,
+                  };
+                }
+                return item;
+              }),
+            );
+          }
+        }
+      }
+    } catch (error) {
+      setPendingApproval(null);
+      setPendingApprovalDialogOpen(false);
+
+      updateConversationMessages(activeConversation.id, (previous) =>
+        previous.map((item) => {
+          if (item.pendingApproval?.id === pendingApproval?.id) {
+            return {
+              ...item,
+              pendingApproval: {
+                ...item.pendingApproval,
+                status: "rejected",
+              } as PendingApproval,
+              error: {
+                code: "AI_ERROR",
+                title: "Unable to execute query",
+                message:
+                  error instanceof Error
+                    ? error.message
+                    : "Something went wrong. Please try again.",
+              },
+            };
+          }
+          return item;
+        }),
+      );
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const handleNewChat = () => {
@@ -474,6 +759,94 @@ export default function WorkspacePage() {
           connectionType={headerConnection?.config.type}
           isConnected={Boolean(activeConnection)}
         />
+
+          {pendingApprovalDialogOpen && pendingApproval && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+              onMouseDown={(event) => {
+                if (event.target === event.currentTarget) {
+                  setPendingApprovalDialogOpen(false);
+                }
+              }}
+            >
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="pending-approval-title"
+                className="flex max-w-xl flex-col border border-neutral-200 bg-white shadow-xl"
+              >
+                <div className="flex items-center justify-between border-b border-neutral-200 px-6 py-5">
+                  <div>
+                    <h2
+                      id="pending-approval-title"
+                      className="text-base font-semibold text-neutral-950"
+                    >
+                      Approve Write Query
+                    </h2>
+                    <p className="mt-1 text-xs text-neutral-500">
+                      Queryline wants to execute a write operation. Review and
+                      approve before it runs.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="px-6 py-4">
+                  <div className="mb-4">
+                    <h3 className="text-xs font-semibold text-neutral-700 uppercase tracking-[0.1em]">
+                      Proposed Query
+                    </h3>
+                    <div className="mt-1 overflow-auto border rounded bg-neutral-50 p-3 text-[11px] font-mono text-neutral-700 max-h-48">
+                      {pendingApproval.query}
+                    </div>
+                  </div>
+
+                  <div className="mb-4">
+                    <h3 className="text-xs font-semibold text-neutral-700 uppercase tracking-[0.1em]">
+                      Action
+                    </h3>
+                    <p className="mt-1 text-xs text-neutral-500">
+                      Choose how to proceed with this write operation.
+                    </p>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handlePendingApprovalAction("reject")
+                      }
+                      disabled={isSending}
+                      className="flex-1 h-9 border border-neutral-200 px-4 text-xs font-medium text-neutral-700 transition-colors hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Reject
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handlePendingApprovalAction("edit")
+                      }
+                      disabled={isSending}
+                      className="flex-1 h-9 border border-neutral-200 px-4 text-xs font-medium text-neutral-700 transition-colors hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Edit
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handlePendingApprovalAction("approve")
+                      }
+                      disabled={isSending}
+                      className="flex-1 h-9 bg-neutral-950 px-4 text-xs font-medium text-white transition-colors hover:bg-[#f36b3f] disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Approve
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
         {activeConnection ? (
           <>
@@ -709,7 +1082,8 @@ export default function WorkspacePage() {
                 }}
                 className="text-xs font-medium text-neutral-500 transition-colors hover:text-neutral-950"
               >
-                + Add connection
+                <Icon name="connect" className="mr-1 size-3 inline-block" /> 
+                Add connection
               </button>
 
               <div className="flex gap-2">

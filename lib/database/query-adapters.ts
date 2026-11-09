@@ -3,7 +3,7 @@ import { Client } from "pg";
 import mysql from "mysql2/promise";
 import Database from "better-sqlite3";
 import { MongoClient } from "mongodb";
-import { validateReadOnlySQL } from "@/lib/database/query-validator";
+import { validateReadOnlySQL, validateWriteSQL } from "@/lib/database/query-validator";
 import {
   MAX_QUERY_ROWS,
   QUERY_TIMEOUT_MS,
@@ -180,6 +180,22 @@ class PostgreSQLQueryAdapter implements DatabaseQueryAdapter {
       await client.end().catch(() => undefined);
     }
   }
+
+  async executeWriteQuery(query: string): Promise<QueryExecutionResult> {
+    const startedAt = Date.now();
+    const client = this.createClient();
+
+    try {
+      await client.connect();
+
+      const normalizedQuery = validateWriteSQL(query);
+      const result = await client.query(normalizedQuery);
+
+      return createExecutionResult(toRows(result.rows), startedAt);
+    } finally {
+      await client.end().catch(() => undefined);
+    }
+  }
 }
 
 class MySQLQueryAdapter implements DatabaseQueryAdapter {
@@ -262,6 +278,23 @@ class MySQLQueryAdapter implements DatabaseQueryAdapter {
       });
 
       return createExecutionResult(toRows(rows), startedAt);
+    } finally {
+      await connection.end();
+    }
+  }
+
+  async executeWriteQuery(query: string): Promise<QueryExecutionResult> {
+    const startedAt = Date.now();
+    const connection = await this.createConnection();
+
+    try {
+      const normalizedQuery = validateWriteSQL(query);
+      const [result] = await connection.query({
+        sql: normalizedQuery,
+        timeout: QUERY_TIMEOUT_MS,
+      });
+
+      return createExecutionResult(toRows(result), startedAt);
     } finally {
       await connection.end();
     }
@@ -351,6 +384,23 @@ class MariaDBQueryAdapter implements DatabaseQueryAdapter {
       });
 
       return createExecutionResult(toRows(rows), startedAt);
+    } finally {
+      await connection.end();
+    }
+  }
+
+  async executeWriteQuery(query: string): Promise<QueryExecutionResult> {
+    const startedAt = Date.now();
+    const connection = await this.createConnection();
+
+    try {
+      const normalizedQuery = validateWriteSQL(query);
+      const [result] = await connection.query({
+        sql: normalizedQuery,
+        timeout: QUERY_TIMEOUT_MS,
+      });
+
+      return createExecutionResult(toRows(result), startedAt);
     } finally {
       await connection.end();
     }
@@ -461,6 +511,21 @@ class SQLServerQueryAdapter implements DatabaseQueryAdapter {
       await pool.close();
     }
   }
+
+  async executeWriteQuery(query: string): Promise<QueryExecutionResult> {
+    const startedAt = Date.now();
+    const pool = await mssql.connect(this.createConfig());
+
+    try {
+      const normalizedQuery = validateWriteSQL(query);
+      const result = await pool.request().query(normalizedQuery);
+      const rows = toRows(result.recordset);
+
+      return createExecutionResult(rows, startedAt);
+    } finally {
+      await pool.close();
+    }
+  }
 }
 
 class SQLiteQueryAdapter implements DatabaseQueryAdapter {
@@ -542,6 +607,32 @@ class SQLiteQueryAdapter implements DatabaseQueryAdapter {
       const rows = statement.all() as Record<string, unknown>[];
 
       return createExecutionResult(rows, startedAt);
+    } finally {
+      database.close();
+    }
+  }
+
+  async executeWriteQuery(query: string): Promise<QueryExecutionResult> {
+    const startedAt = Date.now();
+    const database = new Database(this.config.database, {
+      readonly: false,
+      fileMustExist: true,
+    });
+
+    try {
+      const normalizedQuery = validateWriteSQL(query);
+      const statement = database.prepare(normalizedQuery);
+
+      if (statement.reader) {
+        throw new Error("Expected a write query for SQLite.");
+      }
+
+      const result = statement.run() as { changes: number; lastInsertRowid: number };
+
+      return createExecutionResult(
+        [{ changes: result.changes, lastInsertRowid: result.lastInsertRowid }],
+        startedAt,
+      );
     } finally {
       database.close();
     }
@@ -670,6 +761,67 @@ class MongoDBQueryAdapter implements DatabaseQueryAdapter {
 
       return createExecutionResult(
         rows as Record<string, unknown>[],
+        startedAt,
+      );
+    } finally {
+      await client.close();
+    }
+  }
+
+  async executeWriteQuery(query: string): Promise<QueryExecutionResult> {
+    const startedAt = Date.now();
+    const client = new MongoClient(this.getUri(), {
+      serverSelectionTimeoutMS: QUERY_TIMEOUT_MS,
+    });
+
+    try {
+      await client.connect();
+
+      const database = client.db(this.config.database);
+      const input = JSON.parse(query) as {
+        collection: string;
+        operation: "insertOne" | "updateOne" | "deleteOne";
+        filter?: Record<string, unknown>;
+        document?: Record<string, unknown>;
+        update?: Record<string, unknown>;
+      };
+
+      if (!input.collection) {
+        throw new Error("Collection is required for MongoDB write operations.");
+      }
+
+      const collection = database.collection(input.collection);
+
+      let result: unknown;
+
+      switch (input.operation) {
+        case "insertOne":
+          result = await collection.insertOne(input.document ?? {});
+          break;
+        case "updateOne":
+          if (!input.filter || !input.update) {
+            throw new Error("filter and update are required for updateOne.");
+          }
+          result = await collection.updateOne(input.filter, input.update, {
+            maxTimeMS: QUERY_TIMEOUT_MS,
+          });
+          break;
+        case "deleteOne":
+          if (!input.filter) {
+            throw new Error("filter is required for deleteOne.");
+          }
+          result = await collection.deleteOne(input.filter, {
+            maxTimeMS: QUERY_TIMEOUT_MS,
+          });
+          break;
+        default:
+          throw new Error(
+            `Unsupported MongoDB write operation: ${input.operation}`,
+          );
+      }
+
+      return createExecutionResult(
+        [{ result }],
         startedAt,
       );
     } finally {

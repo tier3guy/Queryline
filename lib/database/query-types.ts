@@ -1,5 +1,7 @@
 import type { DatabaseType } from "@/lib/database/types";
 
+export type { DatabaseType };
+
 export interface DatabaseTable {
   name: string;
   schema?: string;
@@ -38,4 +40,22 @@ export interface DatabaseQueryAdapter {
   readonly type: DatabaseType;
   getSchema(): Promise<DatabaseSchema>;
   executeReadQuery(query: string): Promise<QueryExecutionResult>;
+  executeWriteQuery(query: string): Promise<QueryExecutionResult>;
 };
+
+export type QueryPermission = "read-only" | "ask-before-write" | "read-write";
+
+export interface PendingApproval {
+  id: string;
+  type: "write_query";
+  query: string;
+  databaseType: DatabaseType;
+  description?: string;
+  status: "pending" | "approved" | "rejected";
+}
+
+export interface PendingApprovalUpdate {
+  id: string;
+  query?: string;
+  status: "pending" | "approved" | "rejected";
+}

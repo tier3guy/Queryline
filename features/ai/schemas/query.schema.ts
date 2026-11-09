@@ -45,6 +45,17 @@ export const databaseQuerySchema = z.object({
   message: z.string().trim().min(1).max(10000),
   connection: connectionSchema,
   openRouter: openRouterSchema,
+  permission: z.enum(["read-only", "ask-before-write", "read-write"]).default("read-only"),
 });
 
 export type DatabaseQueryInput = z.infer<typeof databaseQuerySchema>;
+
+export const executeApprovedQuerySchema = z.object({
+  query: z.string().trim().min(1).max(12000),
+  connection: connectionSchema,
+  openRouter: openRouterSchema,
+  permission: z.enum(["read-only", "ask-before-write", "read-write"]).default("read-write"),
+  pendingApprovalId: z.string(),
+});
+
+export type ExecuteApprovedQueryInput = z.infer<typeof executeApprovedQuerySchema>;

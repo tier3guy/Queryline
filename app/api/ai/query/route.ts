@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
-import { databaseQuerySchema } from "@/features/ai/schemas/query.schema";
+import type { DatabaseConnectionConfig } from "@/lib/database/types";
+import { databaseQuerySchema, executeApprovedQuerySchema } from "@/features/ai/schemas/query.schema";
 import { createDatabaseQueryAdapter } from "@/lib/database/query-adapters";
 import { createDatabaseAgent } from "@/features/ai/services/database-agent";
+import { PendingApprovalError } from "@/features/ai/tools/database.tools";
 
 function extractText(content: unknown): string {
   if (typeof content === "string") {
@@ -79,9 +81,29 @@ function createErrorEvent(error: unknown) {
   };
 }
 
+function createPendingApprovalEvent(query: string, databaseType: string) {
+  return {
+    type: "pending_approval",
+    pendingApproval: {
+      id: crypto.randomUUID(),
+      query,
+      databaseType,
+      status: "pending" as const,
+    },
+  };
+}
+
 export async function POST(request: Request) {
   try {
     const body: unknown = await request.json();
+
+    // Check if this is an execute-approved-query request.
+    const approvedValidation = executeApprovedQuerySchema.safeParse(body);
+    if (approvedValidation.success) {
+      return handleExecuteApprovedQuery(request, approvedValidation.data);
+    }
+
+    // Otherwise, treat as a new AI query request.
     const validation = databaseQuerySchema.safeParse(body);
 
     if (!validation.success) {
@@ -95,12 +117,13 @@ export async function POST(request: Request) {
       );
     }
 
-    const { message, connection, openRouter } = validation.data;
+    const { message, connection, openRouter, permission } = validation.data;
 
     const adapter = createDatabaseQueryAdapter(connection);
     const agent = createDatabaseAgent(
       adapter,
       connection.type,
+      permission,
       openRouter,
     );
 
@@ -175,7 +198,11 @@ export async function POST(request: Request) {
             });
           }
         } catch (error) {
-          if (!request.signal.aborted) {
+          if (error instanceof PendingApprovalError) {
+            if (!request.signal.aborted) {
+              sendEvent(createPendingApprovalEvent(error.query, error.databaseType));
+            }
+          } else if (!request.signal.aborted) {
             sendEvent(createErrorEvent(error));
           }
         } finally {
@@ -201,4 +228,55 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
+}
+
+async function handleExecuteApprovedQuery(
+  request: Request,
+  data: { query: string; connection: DatabaseConnectionConfig; openRouter?: { apiKey?: string; model?: string }; permission: string; pendingApprovalId: string },
+) {
+  const adapter = createDatabaseQueryAdapter(data.connection);
+
+  const encoder = new TextEncoder();
+
+  const readableStream = new ReadableStream({
+    async start(controller) {
+      const sendEvent = (event: Record<string, unknown>) => {
+        controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify(event)}\\n\\n`),
+        );
+      };
+
+      try {
+        // Execute the approved write query directly.
+        const result = await adapter.executeWriteQuery(data.query);
+
+        sendEvent({
+          type: "query_executed",
+          pendingApprovalId: data.pendingApprovalId,
+          query: data.query,
+          result,
+          success: true,
+        });
+
+        sendEvent({
+          type: "done",
+        });
+      } catch (error) {
+        if (!request.signal.aborted) {
+          sendEvent(createErrorEvent(error));
+        }
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(readableStream, {
+    headers: {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    },
+  });
 }

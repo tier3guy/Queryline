@@ -9,6 +9,9 @@ const FORBIDDEN_LOCK_PATTERN = /\bfor\s+(update|share)\b/i;
 
 const FORBIDDEN_DELAY_PATTERN = /\b(pg_sleep|sleep)\s*\(/i;
 
+const WRITE_SQL_PATTERN =
+  /\b(insert|update|delete|upsert|replace|merge)\b/i;
+
 export function validateReadOnlySQL(query: string): string {
   const normalizedQuery = query.trim();
 
@@ -47,4 +50,52 @@ export function validateReadOnlySQL(query: string): string {
   }
 
   return withoutTrailingSemicolon;
+}
+
+export function validateWriteSQL(query: string): string {
+  const normalizedQuery = query.trim();
+
+  if (!normalizedQuery) {
+    throw new Error("SQL query cannot be empty.");
+  }
+
+  if (normalizedQuery.length > MAX_QUERY_LENGTH) {
+    throw new Error("SQL query exceeds the maximum allowed length.");
+  }
+
+  if (FORBIDDEN_COMMENT_PATTERN.test(normalizedQuery)) {
+    throw new Error("SQL comments are not allowed.");
+  }
+
+  const withoutTrailingSemicolon = normalizedQuery.replace(/;$/, "");
+
+  if (withoutTrailingSemicolon.includes(";")) {
+    throw new Error("Only one SQL statement is allowed.");
+  }
+
+  if (!WRITE_SQL_PATTERN.test(withoutTrailingSemicolon)) {
+    throw new Error("Only write queries (INSERT, UPDATE, DELETE) are allowed.");
+  }
+
+  const dangerousPatterns =
+    /\b(drop|alter|create|truncate|grant|revoke|execute|call|copy|vacuum|attach|detach|pragma|dblink|lo_import|lo_export|pg_read_file|pg_write_file)\b/i;
+
+  if (dangerousPatterns.test(withoutTrailingSemicolon)) {
+    throw new Error("The query contains a destructive or forbidden SQL operation.");
+  }
+
+  if (FORBIDDEN_LOCK_PATTERN.test(withoutTrailingSemicolon)) {
+    throw new Error("Locking queries are not allowed.");
+  }
+
+  if (FORBIDDEN_DELAY_PATTERN.test(withoutTrailingSemicolon)) {
+    throw new Error("Time-delay functions are not allowed.");
+  }
+
+  return withoutTrailingSemicolon;
+}
+
+export function isWriteQuery(query: string): boolean {
+  const trimmed = query.trim();
+  return WRITE_SQL_PATTERN.test(trimmed);
 };

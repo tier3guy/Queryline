@@ -1,4 +1,5 @@
 import type { QueryExecutionResult } from "@/lib/database/query-types";
+import type { QueryPermission, PendingApproval } from "@/lib/database/query-types";
 import type { DatabaseConnectionConfig } from "@/lib/database/types";
 
 export type MessageRole = "user" | "assistant";
@@ -8,10 +9,11 @@ export interface ChatQueryExecution {
   success: boolean;
   result?: QueryExecutionResult;
   error?: string;
+  isWrite?: boolean;
 };
 
 export interface ChatError {
-  code: "RATE_LIMITED" | "AI_ERROR";
+  code: "RATE_LIMITED" | "AI_ERROR" | "PENDING_APPROVAL";
   title: string;
   message: string;
   retryAt?: string;
@@ -26,6 +28,7 @@ export interface ChatMessage {
   status?: string;
   queryExecutions?: ChatQueryExecution[];
   error?: ChatError;
+  pendingApproval?: PendingApproval;
 };
 
 export interface Conversation {
@@ -53,3 +56,5 @@ export interface WorkspaceStorage {
   activeConnectionId: string | null;
   activeConversationId: string | null;
 };
+
+export type WorkspaceQueryPermission = QueryPermission;

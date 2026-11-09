@@ -3,6 +3,7 @@
 import MessageContent from "./message-content";
 import Logo from "@/components/shared/logo/logo";
 import type { ChatMessage } from "@/features/workspace/types";
+import type { PendingApproval } from "@/lib/database/query-types";
 
 interface ChatProps {
   messages: ChatMessage[];
@@ -11,8 +12,7 @@ interface ChatProps {
   onSuggestionClick: (suggestion: string) => void;
 };
 
-const suggestions = [
-  {
+const suggestions = [  {
     title: "Explore my database",
     description: "Show me all tables and their structure.",
     prompt:
@@ -53,6 +53,68 @@ function formatCellValue(value: unknown): string {
   }
 
   return String(value);
+}
+
+function PendingApprovalDisplay({
+  pendingApproval,
+}: {
+  pendingApproval: NonNullable<ChatMessage["pendingApproval"]>;
+}) {
+  const isPending = pendingApproval.status === "pending";
+  const isApproved = pendingApproval.status === "approved";
+  const isRejected = pendingApproval.status === "rejected";
+
+  const getStatusConfig = () => {
+    if (isPending) {
+      return {
+        color: "bg-amber-50 border-amber-200 text-amber-800 dot-bg-amber-500",
+        label: "Awaiting Approval",
+        icon: "⟳",
+      };
+    }
+    if (isApproved) {
+      return {
+        color: "bg-emerald-50 border-emerald-200 text-emerald-800 dot-bg-emerald-500",
+        label: "Approved",
+        icon: "✓",
+      };
+    }
+    return {
+      color: "bg-red-50 border-red-200 text-red-800 dot-bg-red-500",
+      label: "Rejected",
+      icon: "✗",
+    };
+  };
+
+  const status = getStatusConfig();
+
+  return (
+    <div
+      className={`overflow-hidden border ${status.color.split(" ")[0]} rounded-lg p-3 mb-3`}
+    >
+      <div className="flex items-start gap-3">
+        <div className={`flex size-6 shrink-0 items-center justify-center rounded-full ${status.color.split(" ").slice(1).join(" ")} text-xs font-semibold`}>
+          {status.icon}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 mb-1">
+            <span className="text-[10px] font-bold uppercase tracking-tighter">
+              {status.label}
+            </span>
+            <span className="text-[10px] text-neutral-500">
+              • Write query requires approval
+            </span>
+          </div>
+          <div className="text-[11px] font-mono text-neutral-700 break-all">
+            {pendingApproval.query}
+          </div>
+          <div className="mt-1.5 text-[10px] text-neutral-500">
+            Database: {pendingApproval.databaseType}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function AssistantError({
@@ -378,6 +440,12 @@ export default function Chat({
                         content={message.content}
                         isStreaming={isActiveAssistant && isLoading}
                       />
+
+                      {message.pendingApproval && (
+                        <PendingApprovalDisplay
+                          pendingApproval={message.pendingApproval}
+                        />
+                      )}
 
                       {message.queryExecutions?.map((execution, index) => (
                         <QueryExecution
