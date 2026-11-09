@@ -112,7 +112,7 @@ export default function Sidebar({
             }}
             className="flex w-full items-center justify-center gap-2 bg-neutral-950 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#f36b3f]"
           >
-            <span className="text-lg leading-none">+</span>
+            <Icon name="ai-chat" size={16} color="#fff" />
             New Chat
           </button>
 
@@ -124,7 +124,7 @@ export default function Sidebar({
             }}
             className="flex w-full items-center justify-center gap-2 border border-neutral-200 px-4 py-2.5 text-sm font-medium text-neutral-700 transition-colors hover:border-neutral-400 hover:bg-neutral-50"
           >
-            <span className="text-lg leading-none">+</span>
+            <Icon name="connect" size={16} color="#000" />
             New Connection
           </button>
         </div>

@@ -77,7 +77,7 @@ export default function WorkspaceHeader({
       </div>
 
       <div className="ml-3 flex shrink-0 items-center gap-3">
-        <div className="hidden items-center gap-2 border-r border-neutral-200 pr-4 sm:flex">
+        <div className="hidden items-center gap-2 border-neutral-200 sm:flex">
           <span
             className={`size-1.5 ${
               isConnected ? "bg-[#f36b3f]" : "bg-neutral-300"
@@ -92,20 +92,6 @@ export default function WorkspaceHeader({
             {statusLabel}
           </span>
         </div>
-
-        <button
-          type="button"
-          onClick={onConnectClick}
-          className="flex items-center gap-2 bg-neutral-950 px-3 py-2.5 text-[11px] font-medium text-white transition-colors hover:bg-[#f36b3f] sm:px-4 sm:text-xs"
-        >
-          <span className="text-base leading-none">+</span>
-
-          <span>
-            {isConnected || connectionName
-              ? "Add connection"
-              : "Connect database"}
-          </span>
-        </button>
       </div>
     </header>
   );
