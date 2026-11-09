@@ -106,12 +106,13 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
       model: model.trim(),
     };
 
-    localStorage.setItem(PERMISSION_STORAGE_KEY, permission);
-    localStorage.setItem(OPENROUTER_STORAGE_KEY, JSON.stringify(settings));
-
     setIsSaving(true);
     try {
       const result = await saveOpenRouterSettings(settings);
+
+      // Only save to localStorage after successful server sync
+      localStorage.setItem(PERMISSION_STORAGE_KEY, permission);
+      localStorage.setItem(OPENROUTER_STORAGE_KEY, JSON.stringify(settings));
 
       setSaved(true);
       setValidationResult(result.valid ? "valid" : "invalid");
@@ -123,9 +124,13 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
       );
 
       await fetchServerStatus();
+      onClose();  // Close the modal after successful save
     } catch {
-      setSaved(true);
-      setValidationMessage("Saved locally. Unable to sync with the server.");
+      // DO NOT save to localStorage - keep existing data unchanged
+      setSaved(false);
+      setValidationMessage(
+        "Unable to save settings. Your existing configuration is unchanged.",
+      );
     } finally {
       setIsSaving(false);
     }
