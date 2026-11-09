@@ -2,9 +2,13 @@
 
 import { useState } from "react";
 import Icon from "@/components/icons";
+import { ConfirmModal } from "@/features/workspace/components/modals/confirm-modal";
 import Logo from "@/components/shared/logo/logo";
 import SettingsModal from "@/features/workspace/components/settings";
-import type { SavedDatabaseConnection, WorkspaceConversation } from "@/features/workspace/types";
+import type {
+  SavedDatabaseConnection,
+  WorkspaceConversation,
+} from "@/features/workspace/types";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -55,23 +59,20 @@ export default function Sidebar({
   onDeleteConversation,
 }: SidebarProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [deleteConnectionModal, setDeleteConnectionModal] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [deleteConversationModal, setDeleteConversationModal] = useState<{
+    id: string;
+    title: string;
+  } | null>(null);
 
   const handleDeleteConnection = (connectionId: string, name: string) => {
-    if (
-      window.confirm(
-        `Delete connection "${name}"? Its conversations will be preserved.`,
-      )
-    ) {
-      onDeleteConnection(connectionId);
-    }
+    setDeleteConnectionModal({ id: connectionId, name });
   };
-
   const handleDeleteConversation = (conversationId: string, title: string) => {
-    if (
-      window.confirm(`Delete conversation "${title}"? This cannot be undone.`)
-    ) {
-      onDeleteConversation(conversationId);
-    }
+    setDeleteConversationModal({ id: conversationId, title });
   };
 
   return (
@@ -312,6 +313,36 @@ export default function Sidebar({
       </aside>
 
       {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
+
+      {deleteConnectionModal && (
+        <ConfirmModal
+          isOpen={true}
+          onClose={() => setDeleteConnectionModal(null)}
+          title="Delete Connection"
+          text="Are you sure you want to delete this connection? Its conversations will be preserved."
+          confirmText="Delete"
+          cancelText="Cancel"
+          onConfirm={() => {
+            onDeleteConnection(deleteConnectionModal!.id);
+            setDeleteConnectionModal(null);
+          }}
+        />
+      )}
+
+      {deleteConversationModal && (
+        <ConfirmModal
+          isOpen={true}
+          onClose={() => setDeleteConversationModal(null)}
+          title="Delete Conversation"
+          text="Are you sure you want to delete this conversation? This cannot be undone."
+          confirmText="Delete"
+          cancelText="Cancel"
+          onConfirm={() => {
+            onDeleteConversation(deleteConversationModal!.id);
+            setDeleteConversationModal(null);
+          }}
+        />
+      )}
     </>
   );
 }
